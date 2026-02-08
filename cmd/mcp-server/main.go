@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -34,13 +33,13 @@ func main() {
 	)
 
 	// Wrap in SSE server
-	sseServer := server.NewSSEServer(mcpServer)
+	sseServer := server.NewSSEServer(mcpServer,
+		server.WithBaseURL("http://localhost:3333"),
+	)
 
-	// Expose over HTTP
-	http.Handle("/sse/", http.StripPrefix("/sse", sseServer))
-
+	// Start SSE server (handles GET /sse and POST /message)
 	log.Println("Starting MCP SSE server on :3333")
-	if err := http.ListenAndServe(":3333", nil); err != nil {
+	if err := sseServer.Start(":3333"); err != nil {
 		log.Fatal(err)
 	}
 }
