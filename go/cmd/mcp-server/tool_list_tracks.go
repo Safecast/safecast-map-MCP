@@ -51,38 +51,32 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 }
 
 func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolResult, error) {
-	// Get distinct tracks with their stats from markers table
-	query := `
-		SELECT trackid,
-			count(*) AS measurement_count,
-			min(to_timestamp(date)) AS first_measurement,
-			max(to_timestamp(date)) AS last_measurement,
-			min(lat) AS min_lat, max(lat) AS max_lat,
-			min(lon) AS min_lon, max(lon) AS max_lon,
-			avg(doserate) AS avg_doserate
-		FROM markers
-		WHERE trackid IS NOT NULL AND trackid != ''`
+	query := `SELECT id, filename, file_type, track_id, file_size,
+			created_at, source, source_id, recording_date,
+			detector, username
+		FROM uploads
+		WHERE 1=1`
 
 	args := []any{}
 	argIdx := 1
 
 	if year != 0 {
-		startDate := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-		endDate := time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+		startDate := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
 		if month != 0 {
-			startDate = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC).Unix()
+			startDate = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 			if month == 12 {
-				endDate = time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+				endDate = time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
 			} else {
-				endDate = time.Date(year, time.Month(month+1), 1, 0, 0, 0, 0, time.UTC).Unix()
+				endDate = time.Date(year, time.Month(month+1), 1, 0, 0, 0, 0, time.UTC)
 			}
 		}
-		query += fmt.Sprintf(" AND date >= $%d AND date < $%d", argIdx, argIdx+1)
+		query += fmt.Sprintf(" AND recording_date >= $%d AND recording_date < $%d", argIdx, argIdx+1)
 		args = append(args, startDate, endDate)
 		argIdx += 2
 	}
 
-	query += " GROUP BY trackid ORDER BY max(date) DESC"
+	query += " ORDER BY recording_date DESC"
 	query += fmt.Sprintf(" LIMIT $%d", argIdx)
 	args = append(args, limit)
 
@@ -91,9 +85,24 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	// Get total count
-	countQuery := `SELECT count(DISTINCT trackid) AS total FROM markers WHERE trackid IS NOT NULL AND trackid != ''`
-	countRow, _ := queryRow(ctx, countQuery)
+	// Get total count (with same filters)
+	countQuery := `SELECT count(*) AS total FROM uploads WHERE 1=1`
+	countArgs := []any{}
+	if year != 0 {
+		startDate := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
+		if month != 0 {
+			startDate = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+			if month == 12 {
+				endDate = time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
+			} else {
+				endDate = time.Date(year, time.Month(month+1), 1, 0, 0, 0, 0, time.UTC)
+			}
+		}
+		countQuery += " AND recording_date >= $1 AND recording_date < $2"
+		countArgs = append(countArgs, startDate, endDate)
+	}
+	countRow, _ := queryRow(ctx, countQuery, countArgs...)
 	total := 0
 	if countRow != nil {
 		if t, ok := countRow["total"]; ok {
@@ -109,17 +118,14 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 	tracks := make([]map[string]any, len(rows))
 	for i, r := range rows {
 		tracks[i] = map[string]any{
-			"trackid":           r["trackid"],
-			"measurement_count": r["measurement_count"],
-			"first_measurement": r["first_measurement"],
-			"last_measurement":  r["last_measurement"],
-			"bbox": map[string]any{
-				"min_lat": r["min_lat"],
-				"max_lat": r["max_lat"],
-				"min_lon": r["min_lon"],
-				"max_lon": r["max_lon"],
-			},
-			"avg_doserate": r["avg_doserate"],
+			"id":             r["id"],
+			"filename":       r["filename"],
+			"track_id":       r["track_id"],
+			"detector":       r["detector"],
+			"username":       r["username"],
+			"file_size":      r["file_size"],
+			"recording_date": r["recording_date"],
+			"created_at":     r["created_at"],
 		}
 	}
 

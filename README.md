@@ -36,7 +36,7 @@ The server listens on port 3333 by default.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `MCP_BASE_URL` | No | Base URL for SSE endpoint metadata (default: `http://localhost:3333`) |
+| `MCP_BASE_URL` | No | Base URL advertised by the SSE transport so clients know where to POST messages back (default: `http://localhost:3333`). Must **not** include `/mcp` — the server appends that automatically. |
 | `DATABASE_URL` | No | PostgreSQL connection string. If not set, uses the Safecast REST API. |
 
 ### Endpoints
@@ -46,7 +46,14 @@ The server listens on port 3333 by default.
 
 ## Connecting to Claude.ai
 
-Add as a remote MCP server in Claude.ai settings using the Streamable HTTP endpoint URL.
+1. Open [claude.ai](https://claude.ai) in your browser
+2. Go to **Settings** (bottom-left) > **Integrations**
+3. Click **Add more** > **Add custom integration**
+4. Enter a name (e.g. "Safecast") and paste the Streamable HTTP endpoint URL:
+   ```
+   https://vps-01.safecast.jp/mcp-http
+   ```
+5. Click **Save** — the Safecast tools will now be available in your conversations
 
 ## Architecture
 
