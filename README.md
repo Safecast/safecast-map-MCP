@@ -9,7 +9,7 @@ Basic MCP server skeleton with SSE transport.
 
 - **Status:** 🚧 Early development
 - **Tools:** 1/7 (ping only)
-- **Transport:** SSE
+- **Transport:** SSE/stearing HTTP
 - **Location:** `go/`
 - **[View Documentation →](go/README.md)**
 
@@ -69,12 +69,6 @@ Custom GPT → MCP Server → api.safecast.org
 
 ## Contributing
 
-See individual implementation directories for development instructions.
-
-Node.js: [nodejs/README.md](nodejs/README.md)
-Go: [go/README.md](go/README.md)
-
----
 
 ## License
 
