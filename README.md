@@ -9,7 +9,7 @@ Basic MCP server skeleton with SSE transport.
 
 - **Status:** 🚧 Early development
 - **Tools:** 1/7 (ping only)
-- **Transport:** SSE/stearing HTTP
+- **Transport:** SSE/stearming HTTP
 - **Location:** `go/`
 - **[View Documentation →](go/README.md)**
 
