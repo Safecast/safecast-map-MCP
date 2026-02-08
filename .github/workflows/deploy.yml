@@ -38,10 +38,9 @@ jobs:
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
           SSH="ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=10 root@$VPS_HOST"
-          SCP="scp -i ~/.ssh/deploy_key"
 
-          # Upload new binary
-          $SCP safecast-mcp "root@$VPS_HOST:/root/safecast-mcp-server/safecast-mcp-new"
+          # Upload new binary (rsync uses delta transfer for faster uploads)
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" safecast-mcp "root@$VPS_HOST:/root/safecast-mcp-server/safecast-mcp-new"
 
           # Stop old server (may break the SSH connection, so ignore errors)
           $SSH "fuser -k 3333/tcp 2>/dev/null; true" || true
