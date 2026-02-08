@@ -2,25 +2,6 @@
 
 MCP server implementations for querying Safecast radiation data.
 
-## Implementations
-
-### 🚀 Node.js (Production Ready) ⭐
-
-Complete implementation with 7 tools and full Safecast API integration.
-
-- **Status:** ✅ Production ready
-- **Tools:** 7/7 (100% complete)
-- **Transport:** stdio + SSE ready
-- **Location:** `nodejs/`
-- **[View Documentation →](nodejs/README.md)**
-
-**Quick Start:**
-```bash
-cd nodejs
-npm install
-npm run build
-npm start
-```
 
 ### 🔧 Go (Experimental)
 
