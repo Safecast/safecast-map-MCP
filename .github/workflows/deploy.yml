@@ -43,24 +43,25 @@ jobs:
           # Upload new binary (rsync uses delta transfer for faster uploads)
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" safecast-mcp "root@$VPS_HOST:/root/safecast-mcp-server/safecast-mcp-new"
 
-          # Stop old server (may break the SSH connection, so ignore errors)
+          # Write env file to server (avoids quoting issues with special chars in URLs)
+          ENV_FILE="MCP_BASE_URL=https://$VPS_HOST/mcp"
+          if [ -n "$DATABASE_URL" ]; then
+            ENV_FILE="$ENV_FILE
+          DATABASE_URL=$DATABASE_URL"
+          fi
+          echo "$ENV_FILE" | $SSH "cat > /root/safecast-mcp-server/.env"
+
+          # Stop old server
           $SSH "fuser -k 3333/tcp 2>/dev/null; true" || true
           sleep 3
 
-          # Build environment variables for the server
-          ENV_VARS="MCP_BASE_URL=https://$VPS_HOST/mcp"
-          if [ -n "$DATABASE_URL" ]; then
-            ENV_VARS="$ENV_VARS DATABASE_URL='$DATABASE_URL'"
-          fi
-
           # Replace binary and start new server
-          # Use bash -c with setsid to fully detach the process from the SSH session
-          # This prevents SSH from hanging waiting for the child process to exit
+          # setsid creates a new session to fully detach from the SSH channel
           $SSH "cd /root/safecast-mcp-server && \
             rm -f safecast-mcp && \
             mv safecast-mcp-new safecast-mcp && \
             chmod +x safecast-mcp && \
-            $ENV_VARS \
+            set -a && . ./.env && set +a && \
             setsid ./safecast-mcp > /tmp/mcp-server.log 2>&1 < /dev/null &"
 
           # Wait for server to start
