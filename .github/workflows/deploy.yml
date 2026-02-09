@@ -54,12 +54,14 @@ jobs:
           fi
 
           # Replace binary and start new server
+          # Use bash -c with setsid to fully detach the process from the SSH session
+          # This prevents SSH from hanging waiting for the child process to exit
           $SSH "cd /root/safecast-mcp-server && \
             rm -f safecast-mcp && \
             mv safecast-mcp-new safecast-mcp && \
             chmod +x safecast-mcp && \
             $ENV_VARS \
-            nohup ./safecast-mcp > /tmp/mcp-server.log 2>&1 < /dev/null &"
+            setsid ./safecast-mcp > /tmp/mcp-server.log 2>&1 < /dev/null &"
 
           # Wait for server to start
           sleep 3
