@@ -46,6 +46,7 @@ func main() {
 	mcpServer.AddTool(deviceHistoryToolDef, handleDeviceHistory)
 	mcpServer.AddTool(getSpectrumToolDef, handleGetSpectrum)
 	mcpServer.AddTool(radiationInfoToolDef, handleRadiationInfo)
+	mcpServer.AddTool(dbInfoToolDef, handleDBInfo)
 
 	baseURL := os.Getenv("MCP_BASE_URL")
 	if baseURL == "" {
