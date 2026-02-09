@@ -46,9 +46,9 @@ func handleDBInfo(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 
 	// Check if this is a replica (read-only mode)
+	isReplica := false
 	replicationRow, err := queryRow(ctx, "SELECT pg_is_in_recovery() AS in_recovery")
 	if err == nil && replicationRow != nil {
-		isReplica := false
 		if val, ok := replicationRow["in_recovery"].(bool); ok {
 			isReplica = val
 		}
@@ -61,7 +61,7 @@ func handleDBInfo(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 
 	// If this is a replica, try to get replication lag
-	if isReplica, ok := info["is_replica"].(bool); ok && isReplica {
+	if isReplica {
 		lagRow, err := queryRow(ctx, `
 			SELECT 
 				EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) AS lag_seconds,
