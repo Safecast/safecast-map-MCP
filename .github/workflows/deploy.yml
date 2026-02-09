@@ -59,7 +59,7 @@ jobs:
             mv safecast-mcp-new safecast-mcp && \
             chmod +x safecast-mcp && \
             $ENV_VARS \
-            nohup ./safecast-mcp > /tmp/mcp-server.log 2>&1 &"
+            nohup ./safecast-mcp > /tmp/mcp-server.log 2>&1 < /dev/null &"
 
           # Wait for server to start
           sleep 3
