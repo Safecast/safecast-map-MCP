@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"math"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -30,8 +29,8 @@ var searchAreaToolDef = mcp.NewTool("search_area",
 		mcp.Required(),
 	),
 	mcp.WithNumber("limit",
-		mcp.Description("Maximum number of results to return (default: 100, max: 200)"),
-		mcp.Min(1), mcp.Max(200),
+		mcp.Description("Maximum number of results to return (default: 100, max: 10000)"),
+		mcp.Min(1), mcp.Max(10000),
 		mcp.DefaultNumber(100),
 	),
 	mcp.WithReadOnlyHintAnnotation(true),
@@ -68,8 +67,8 @@ func handleSearchArea(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if minLon >= maxLon {
 		return mcp.NewToolResultError("min_lon must be less than max_lon"), nil
 	}
-	if limit < 1 || limit > 200 {
-		return mcp.NewToolResultError("Limit must be between 1 and 200"), nil
+	if limit < 1 || limit > 10000 {
+		return mcp.NewToolResultError("Limit must be between 1 and 10000"), nil
 	}
 
 	if dbAvailable() {
@@ -148,40 +147,24 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 }
 
 func searchAreaAPI(ctx context.Context, minLat, maxLat, minLon, maxLon float64, limit int) (*mcp.CallToolResult, error) {
-	centerLat, centerLon, radiusM := calculateCenterAndRadius(minLat, maxLat, minLon, maxLon)
-
-	measurements, err := client.GetMeasurements(ctx, MeasurementParams{
-		Latitude:  floatPtr(centerLat),
-		Longitude: floatPtr(centerLon),
-		Distance:  floatPtr(radiusM),
-	})
+	markers, err := client.GetMarkers(ctx, minLat, minLon, maxLat, maxLon)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	var filtered []map[string]any
-	for _, m := range measurements {
-		lat, latOk := toFloat(m["latitude"])
-		lon, lonOk := toFloat(m["longitude"])
-		if latOk && lonOk && lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon {
-			filtered = append(filtered, m)
-		}
+	if limit > len(markers) {
+		limit = len(markers)
 	}
-
-	if limit > len(filtered) {
-		limit = len(filtered)
-	}
-	limited := filtered[:limit]
+	limited := markers[:limit]
 
 	normalized := make([]map[string]any, len(limited))
 	for i, m := range limited {
-		normalized[i] = normalizeMeasurement(m)
+		normalized[i] = normalizeGetMarker(m)
 	}
 
 	result := map[string]any{
 		"count":         len(normalized),
-		"total_in_bbox": len(filtered),
-		"total_fetched": len(measurements),
+		"total_in_bbox": len(markers),
 		"source":        "api",
 		"bbox": map[string]any{
 			"min_lat": minLat,
@@ -193,26 +176,6 @@ func searchAreaAPI(ctx context.Context, minLat, maxLat, minLon, maxLon float64, 
 	}
 
 	return jsonResult(result)
-}
-
-// calculateCenterAndRadius computes the center point and search radius from a bounding box.
-func calculateCenterAndRadius(minLat, maxLat, minLon, maxLon float64) (centerLat, centerLon, radiusM float64) {
-	centerLat = (minLat + maxLat) / 2
-	centerLon = (minLon + maxLon) / 2
-
-	const R = 6371e3
-	phi1 := minLat * math.Pi / 180
-	phi2 := maxLat * math.Pi / 180
-	deltaPhi := (maxLat - minLat) * math.Pi / 180
-	deltaLambda := (maxLon - minLon) * math.Pi / 180
-
-	a := math.Sin(deltaPhi/2)*math.Sin(deltaPhi/2) +
-		math.Cos(phi1)*math.Cos(phi2)*math.Sin(deltaLambda/2)*math.Sin(deltaLambda/2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-
-	distance := R * c
-	radiusM = math.Min(distance*0.6, 50000)
-	return
 }
 
 func toFloat(v any) (float64, bool) {

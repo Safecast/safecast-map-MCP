@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -21,8 +19,8 @@ var deviceHistoryToolDef = mcp.NewTool("device_history",
 		mcp.DefaultNumber(30),
 	),
 	mcp.WithNumber("limit",
-		mcp.Description("Maximum number of measurements to return (default: 200, max: 200)"),
-		mcp.Min(1), mcp.Max(200),
+		mcp.Description("Maximum number of measurements to return (default: 200, max: 10000)"),
+		mcp.Min(1), mcp.Max(10000),
 		mcp.DefaultNumber(200),
 	),
 	mcp.WithReadOnlyHintAnnotation(true),
@@ -40,8 +38,8 @@ func handleDeviceHistory(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	if days < 1 || days > 365 {
 		return mcp.NewToolResultError("days must be between 1 and 365"), nil
 	}
-	if limit < 1 || limit > 200 {
-		return mcp.NewToolResultError("Limit must be between 1 and 200"), nil
+	if limit < 1 || limit > 10000 {
+		return mcp.NewToolResultError("Limit must be between 1 and 10000"), nil
 	}
 
 	if dbAvailable() {
@@ -125,54 +123,54 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 }
 
 func deviceHistoryAPI(ctx context.Context, deviceIDStr string, days, limit int) (*mcp.CallToolResult, error) {
-	deviceID, err := strconv.Atoi(deviceIDStr)
+	resp, err := client.GetRealtimeHistory(ctx, deviceIDStr)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("device_id must be a number: %s", deviceIDStr)), nil
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	now := time.Now().UTC()
 	startDate := now.AddDate(0, 0, -days)
 	capturedAfter := startDate.Format("2006-01-02") + " 00:00"
 	capturedBefore := now.Format("2006-01-02") + " 23:59"
+	startUnix := startDate.Unix()
 
-	measurements, err := client.GetMeasurements(ctx, MeasurementParams{
-		DeviceID:       intPtr(deviceID),
-		CapturedAfter:  capturedAfter,
-		CapturedBefore: capturedBefore,
-	})
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-
-	if limit > len(measurements) {
-		limit = len(measurements)
-	}
-	limited := measurements[:limit]
-
-	deviceInfo := map[string]any{
-		"id":           deviceID,
-		"manufacturer": "Unknown",
-		"model":        "Unknown",
-		"sensor":       "Unknown",
-	}
-	devices, devErr := client.GetDevices(ctx)
-	if devErr == nil {
-		for _, d := range devices {
-			if id, ok := toFloat(d["id"]); ok && int(id) == deviceID {
-				deviceInfo = map[string]any{
-					"id":           d["id"],
-					"manufacturer": d["manufacturer"],
-					"model":        d["model"],
-					"sensor":       d["sensor"],
+	// Extract dose rate time series and filter by date range
+	var measurements []map[string]any
+	if series, ok := resp["series"].(map[string]any); ok {
+		if doseRate, ok := series["doseRate"].([]any); ok {
+			for _, raw := range doseRate {
+				pt, ok := raw.(map[string]any)
+				if !ok {
+					continue
 				}
-				break
+				ts, ok := toFloat(pt["time"])
+				if !ok || int64(ts) < startUnix {
+					continue
+				}
+				t := time.Unix(int64(ts), 0).UTC()
+				measurements = append(measurements, map[string]any{
+					"value":       pt["value"],
+					"unit":        "µSv/h",
+					"captured_at": t.Format(time.RFC3339),
+				})
 			}
 		}
 	}
 
-	normalized := make([]map[string]any, len(limited))
-	for i, m := range limited {
-		normalized[i] = normalizeMeasurement(m)
+	totalAvailable := len(measurements)
+	if limit > len(measurements) {
+		limit = len(measurements)
+	}
+	measurements = measurements[:limit]
+
+	deviceInfo := map[string]any{
+		"id": deviceIDStr,
+	}
+	if name, ok := resp["deviceName"].(string); ok && name != "" {
+		deviceInfo["name"] = name
+	}
+	if tube, ok := resp["tube"].(string); ok && tube != "" {
+		deviceInfo["sensor"] = tube
 	}
 
 	result := map[string]any{
@@ -182,10 +180,20 @@ func deviceHistoryAPI(ctx context.Context, deviceIDStr string, days, limit int) 
 			"start_date": capturedAfter,
 			"end_date":   capturedBefore,
 		},
-		"count":           len(normalized),
-		"total_available": len(measurements),
+		"count":           len(measurements),
+		"total_available": totalAvailable,
 		"source":          "api",
-		"measurements":    normalized,
+		"measurements":    measurements,
+	}
+
+	if ranges, ok := resp["ranges"].(map[string]any); ok {
+		if dr, ok := ranges["doseRate"].(map[string]any); ok {
+			result["statistics"] = map[string]any{
+				"min_usvh": dr["min"],
+				"max_usvh": dr["max"],
+				"avg_usvh": dr["avg"],
+			}
+		}
 	}
 
 	return jsonResult(result)

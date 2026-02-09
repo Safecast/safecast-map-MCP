@@ -7,13 +7,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-const safecastBaseURL = "https://api.safecast.org"
+const defaultBaseURL = "https://simplemap.safecast.org"
 
 var client = NewSafecastClient()
 
@@ -23,65 +24,90 @@ type SafecastClient struct {
 }
 
 func NewSafecastClient() *SafecastClient {
+	baseURL := os.Getenv("SIMPLEMAP_URL")
+	if baseURL == "" {
+		baseURL = defaultBaseURL
+	}
 	return &SafecastClient{
-		httpClient: &http.Client{Timeout: 30 * time.Second},
-		baseURL:    safecastBaseURL,
+		httpClient: &http.Client{Timeout: 60 * time.Second},
+		baseURL:    baseURL,
 	}
 }
 
-type MeasurementParams struct {
-	Latitude        *float64
-	Longitude       *float64
-	Distance        *float64
-	Limit           *int
-	CapturedAfter   string
-	CapturedBefore  string
-	BGeigieImportID *int
-	DeviceID        *int
-}
-
-func (c *SafecastClient) GetMeasurements(ctx context.Context, params MeasurementParams) ([]map[string]any, error) {
+// GetLatestNearby queries /api/latest for measurements near a location.
+func (c *SafecastClient) GetLatestNearby(ctx context.Context, lat, lon, radiusM float64, limit int) (map[string]any, error) {
 	v := url.Values{}
-	if params.Latitude != nil {
-		v.Set("latitude", strconv.FormatFloat(*params.Latitude, 'f', -1, 64))
-	}
-	if params.Longitude != nil {
-		v.Set("longitude", strconv.FormatFloat(*params.Longitude, 'f', -1, 64))
-	}
-	if params.Distance != nil {
-		v.Set("distance", strconv.FormatFloat(*params.Distance, 'f', -1, 64))
-	}
-	if params.Limit != nil {
-		v.Set("limit", strconv.Itoa(*params.Limit))
-	}
-	if params.CapturedAfter != "" {
-		v.Set("captured_after", params.CapturedAfter)
-	}
-	if params.CapturedBefore != "" {
-		v.Set("captured_before", params.CapturedBefore)
-	}
-	if params.BGeigieImportID != nil {
-		v.Set("bgeigie_import_id", strconv.Itoa(*params.BGeigieImportID))
-	}
-	if params.DeviceID != nil {
-		v.Set("device_id", strconv.Itoa(*params.DeviceID))
-	}
-	return c.getList(ctx, "/measurements.json", v)
-}
-
-func (c *SafecastClient) GetBGeigieImports(ctx context.Context, limit int) ([]map[string]any, error) {
-	v := url.Values{}
+	v.Set("lat", strconv.FormatFloat(lat, 'f', -1, 64))
+	v.Set("lon", strconv.FormatFloat(lon, 'f', -1, 64))
+	v.Set("radius_m", strconv.FormatFloat(radiusM, 'f', -1, 64))
 	v.Set("limit", strconv.Itoa(limit))
-	return c.getList(ctx, "/bgeigie_imports.json", v)
+	return c.getObject(ctx, "/api/latest", v)
 }
 
-func (c *SafecastClient) GetBGeigieImport(ctx context.Context, id int) (map[string]any, error) {
-	path := fmt.Sprintf("/bgeigie_imports/%d.json", id)
-	return c.getOne(ctx, path)
+// GetMarkers queries /get_markers for measurements within a bounding box.
+func (c *SafecastClient) GetMarkers(ctx context.Context, minLat, minLon, maxLat, maxLon float64) ([]map[string]any, error) {
+	v := url.Values{}
+	v.Set("minLat", strconv.FormatFloat(minLat, 'f', -1, 64))
+	v.Set("minLon", strconv.FormatFloat(minLon, 'f', -1, 64))
+	v.Set("maxLat", strconv.FormatFloat(maxLat, 'f', -1, 64))
+	v.Set("maxLon", strconv.FormatFloat(maxLon, 'f', -1, 64))
+	v.Set("zoom", "0")
+	return c.getList(ctx, "/get_markers", v)
 }
 
-func (c *SafecastClient) GetDevices(ctx context.Context) ([]map[string]any, error) {
-	return c.getList(ctx, "/devices.json", nil)
+// GetTracks queries /api/tracks for all track summaries.
+func (c *SafecastClient) GetTracks(ctx context.Context) (map[string]any, error) {
+	return c.getObject(ctx, "/api/tracks", nil)
+}
+
+// GetTracksByYear queries /api/tracks/years/{year}.
+func (c *SafecastClient) GetTracksByYear(ctx context.Context, year int) (map[string]any, error) {
+	path := fmt.Sprintf("/api/tracks/years/%d", year)
+	return c.getObject(ctx, path, nil)
+}
+
+// GetTracksByMonth queries /api/tracks/months/{year}/{month}.
+func (c *SafecastClient) GetTracksByMonth(ctx context.Context, year, month int) (map[string]any, error) {
+	path := fmt.Sprintf("/api/tracks/months/%d/%d", year, month)
+	return c.getObject(ctx, path, nil)
+}
+
+// GetTrackData queries /api/track/{trackID}.json for full track markers.
+func (c *SafecastClient) GetTrackData(ctx context.Context, trackID string, from, to int) (map[string]any, error) {
+	path := fmt.Sprintf("/api/track/%s.json", url.PathEscape(trackID))
+	v := url.Values{}
+	if from != 0 {
+		v.Set("from", strconv.Itoa(from))
+	}
+	if to != 0 {
+		v.Set("to", strconv.Itoa(to))
+	}
+	return c.getObject(ctx, path, v)
+}
+
+// GetRealtimeHistory queries /realtime_history for device measurement history.
+func (c *SafecastClient) GetRealtimeHistory(ctx context.Context, deviceID string) (map[string]any, error) {
+	v := url.Values{}
+	v.Set("device", deviceID)
+	return c.getObject(ctx, "/realtime_history", v)
+}
+
+// GetSpectrum queries /api/spectrum/{markerID} for gamma spectroscopy data.
+func (c *SafecastClient) GetSpectrum(ctx context.Context, markerID int) (map[string]any, error) {
+	path := fmt.Sprintf("/api/spectrum/%d", markerID)
+	return c.getObject(ctx, path, nil)
+}
+
+func (c *SafecastClient) getObject(ctx context.Context, path string, params url.Values) (map[string]any, error) {
+	body, err := c.doGet(ctx, path, params)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]any
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return result, nil
 }
 
 func (c *SafecastClient) getList(ctx context.Context, path string, params url.Values) ([]map[string]any, error) {
@@ -90,18 +116,6 @@ func (c *SafecastClient) getList(ctx context.Context, path string, params url.Va
 		return nil, err
 	}
 	var result []map[string]any
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return result, nil
-}
-
-func (c *SafecastClient) getOne(ctx context.Context, path string) (map[string]any, error) {
-	body, err := c.doGet(ctx, path, nil)
-	if err != nil {
-		return nil, err
-	}
-	var result map[string]any
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -122,7 +136,7 @@ func (c *SafecastClient) doGet(ctx context.Context, path string, params url.Valu
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("no response from Safecast API: %w", err)
+		return nil, fmt.Errorf("no response from simplemap API: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -132,29 +146,50 @@ func (c *SafecastClient) doGet(ctx context.Context, path string, params url.Valu
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("Safecast API error (%d): %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("simplemap API error (%d): %s", resp.StatusCode, resp.Status)
 	}
 
 	return body, nil
 }
 
-// normalizeMeasurement extracts standard fields from a raw measurement map.
-func normalizeMeasurement(m map[string]any) map[string]any {
+// normalizeLatestMarker converts a marker from /api/latest to MCP output format.
+func normalizeLatestMarker(m map[string]any) map[string]any {
 	return map[string]any{
-		"id":    m["id"],
-		"value": m["value"],
-		"unit":  m["unit"],
-		"captured_at": m["captured_at"],
+		"id":          m["id"],
+		"value":       m["doseRateMicroSvH"],
+		"unit":        "µSv/h",
+		"captured_at": m["timeUTC"],
 		"location": map[string]any{
-			"latitude":  m["latitude"],
-			"longitude": m["longitude"],
+			"latitude":  m["lat"],
+			"longitude": m["lon"],
 		},
-		"device_id":  m["device_id"],
-		"user_id":    m["user_id"],
-		"height":     m["height"],
-		"sensor_id":  m["sensor_id"],
-		"station_id": m["station_id"],
+		"height":     m["altitudeM"],
+		"detector":   m["detectorType"],
+		"speed_ms":   m["speedMS"],
+		"count_rate": m["countRateCPS"],
 	}
+}
+
+// normalizeGetMarker converts a marker from /get_markers to MCP output format.
+func normalizeGetMarker(m map[string]any) map[string]any {
+	result := map[string]any{
+		"id":    m["id"],
+		"value": m["doseRate"],
+		"unit":  "µSv/h",
+		"location": map[string]any{
+			"latitude":  m["lat"],
+			"longitude": m["lon"],
+		},
+		"track_id":    m["trackID"],
+		"height":      m["altitude"],
+		"detector":    m["detector"],
+		"has_spectrum": m["hasSpectrum"],
+	}
+	if date, ok := toFloat(m["date"]); ok && date > 0 {
+		t := time.Unix(int64(date), 0).UTC()
+		result["captured_at"] = t.Format(time.RFC3339)
+	}
+	return result
 }
 
 // jsonResult serializes v to indented JSON and returns it as a tool result.
@@ -165,9 +200,3 @@ func jsonResult(v any) (*mcp.CallToolResult, error) {
 	}
 	return mcp.NewToolResultText(string(data)), nil
 }
-
-// floatPtr returns a pointer to a float64.
-func floatPtr(f float64) *float64 { return &f }
-
-// intPtr returns a pointer to an int.
-func intPtr(i int) *int { return &i }

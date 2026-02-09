@@ -28,7 +28,7 @@ func handleGetSpectrum(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if dbAvailable() {
 		return getSpectrumDB(ctx, markerID)
 	}
-	return getSpectrumStatic(markerID)
+	return getSpectrumAPI(ctx, markerID)
 }
 
 func getSpectrumDB(ctx context.Context, markerID int) (*mcp.CallToolResult, error) {
@@ -90,17 +90,27 @@ func getSpectrumDB(ctx context.Context, markerID int) (*mcp.CallToolResult, erro
 	return jsonResult(result)
 }
 
-func getSpectrumStatic(markerID int) (*mcp.CallToolResult, error) {
+func getSpectrumAPI(ctx context.Context, markerID int) (*mcp.CallToolResult, error) {
+	spectrum, err := client.GetSpectrum(ctx, markerID)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
 	result := map[string]any{
 		"marker_id": markerID,
-		"available": false,
-		"message": "Gamma spectrum data is not available through the Safecast public API. " +
-			"Spectrum analysis requires raw device data files or direct database access. " +
-			"For spectrum analysis, please download raw log files from individual bGeigie imports.",
-		"alternatives": []string{
-			"Download raw bGeigie log files (.LOG files) for offline spectrum analysis",
-			"Contact Safecast directly for spectrum data access",
-			"Use devices with built-in spectrum capabilities (e.g., RadiaCode)",
+		"available": true,
+		"source":    "api",
+		"spectrum": map[string]any{
+			"channels":       spectrum["channels"],
+			"channel_count":  spectrum["channelCount"],
+			"energy_min_kev": spectrum["energyMinKeV"],
+			"energy_max_kev": spectrum["energyMaxKeV"],
+			"live_time_sec":  spectrum["liveTimeSec"],
+			"real_time_sec":  spectrum["realTimeSec"],
+			"device_model":   spectrum["deviceModel"],
+			"calibration":    spectrum["calibration"],
+			"source_format":  spectrum["sourceFormat"],
+			"filename":       spectrum["filename"],
 		},
 	}
 

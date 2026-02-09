@@ -24,8 +24,8 @@ var queryRadiationToolDef = mcp.NewTool("query_radiation",
 		mcp.DefaultNumber(1500),
 	),
 	mcp.WithNumber("limit",
-		mcp.Description("Maximum number of results to return (default: 25, max: 200)"),
-		mcp.Min(1), mcp.Max(200),
+		mcp.Description("Maximum number of results to return (default: 25, max: 10000)"),
+		mcp.Min(1), mcp.Max(10000),
 		mcp.DefaultNumber(25),
 	),
 	mcp.WithReadOnlyHintAnnotation(true),
@@ -52,8 +52,8 @@ func handleQueryRadiation(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if radiusM < 25 || radiusM > 50000 {
 		return mcp.NewToolResultError("Radius must be between 25 and 50000 meters"), nil
 	}
-	if limit < 1 || limit > 200 {
-		return mcp.NewToolResultError("Limit must be between 1 and 200"), nil
+	if limit < 1 || limit > 10000 {
+		return mcp.NewToolResultError("Limit must be between 1 and 10000"), nil
 	}
 
 	if dbAvailable() {
@@ -134,29 +134,22 @@ func queryRadiationDB(ctx context.Context, lat, lon, radiusM float64, limit int)
 }
 
 func queryRadiationAPI(ctx context.Context, lat, lon, radiusM float64, limit int) (*mcp.CallToolResult, error) {
-	measurements, err := client.GetMeasurements(ctx, MeasurementParams{
-		Latitude:  floatPtr(lat),
-		Longitude: floatPtr(lon),
-		Distance:  floatPtr(radiusM),
-	})
+	resp, err := client.GetLatestNearby(ctx, lat, lon, radiusM, limit)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	if limit > len(measurements) {
-		limit = len(measurements)
-	}
-	limited := measurements[:limit]
-
-	normalized := make([]map[string]any, len(limited))
-	for i, m := range limited {
-		normalized[i] = normalizeMeasurement(m)
+	markers, _ := resp["markers"].([]any)
+	normalized := make([]map[string]any, 0, len(markers))
+	for _, raw := range markers {
+		if m, ok := raw.(map[string]any); ok {
+			normalized = append(normalized, normalizeLatestMarker(m))
+		}
 	}
 
 	result := map[string]any{
-		"count":           len(normalized),
-		"total_available": len(measurements),
-		"source":          "api",
+		"count":  len(normalized),
+		"source": "api",
 		"query": map[string]any{
 			"lat":      lat,
 			"lon":      lon,

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -21,8 +20,8 @@ var getTrackToolDef = mcp.NewTool("get_track",
 		mcp.Description("Optional: End marker ID for filtering"),
 	),
 	mcp.WithNumber("limit",
-		mcp.Description("Maximum number of measurements to return (default: 200, max: 200)"),
-		mcp.Min(1), mcp.Max(200),
+		mcp.Description("Maximum number of measurements to return (default: 200, max: 10000)"),
+		mcp.Min(1), mcp.Max(10000),
 		mcp.DefaultNumber(200),
 	),
 	mcp.WithReadOnlyHintAnnotation(true),
@@ -35,8 +34,8 @@ func handleGetTrack(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	}
 
 	limit := req.GetInt("limit", 200)
-	if limit < 1 || limit > 200 {
-		return mcp.NewToolResultError("Limit must be between 1 and 200"), nil
+	if limit < 1 || limit > 10000 {
+		return mcp.NewToolResultError("Limit must be between 1 and 10000"), nil
 	}
 
 	fromID := req.GetInt("from", 0)
@@ -127,66 +126,34 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 }
 
 func getTrackAPI(ctx context.Context, trackIDStr string, fromID, toID, limit int) (*mcp.CallToolResult, error) {
-	trackID, err := strconv.Atoi(trackIDStr)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("track_id must be a number: %s", trackIDStr)), nil
-	}
-
-	trackInfo, err := client.GetBGeigieImport(ctx, trackID)
+	resp, err := client.GetTrackData(ctx, trackIDStr, fromID, toID)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	measurements, err := client.GetMeasurements(ctx, MeasurementParams{
-		BGeigieImportID: intPtr(trackID),
-	})
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
+	markers, _ := resp["markers"].([]any)
+	totalAvailable := len(markers)
 
-	filtered := measurements
-	if fromID != 0 || toID != 0 {
-		var rangeFiltered []map[string]any
-		for _, m := range measurements {
-			id, ok := toFloat(m["id"])
-			if !ok {
-				continue
-			}
-			mid := int(id)
-			if fromID != 0 && mid < fromID {
-				continue
-			}
-			if toID != 0 && mid > toID {
-				continue
-			}
-			rangeFiltered = append(rangeFiltered, m)
+	if limit > len(markers) {
+		limit = len(markers)
+	}
+	limited := markers[:limit]
+
+	normalized := make([]map[string]any, 0, len(limited))
+	for _, raw := range limited {
+		if m, ok := raw.(map[string]any); ok {
+			normalized = append(normalized, normalizeLatestMarker(m))
 		}
-		filtered = rangeFiltered
-	}
-
-	if limit > len(filtered) {
-		limit = len(filtered)
-	}
-	limited := filtered[:limit]
-
-	normalized := make([]map[string]any, len(limited))
-	for i, m := range limited {
-		normalized[i] = normalizeMeasurement(m)
 	}
 
 	result := map[string]any{
 		"track": map[string]any{
-			"id":                trackInfo["id"],
-			"name":              trackInfo["name"],
-			"description":       trackInfo["description"],
-			"cities":            trackInfo["cities"],
-			"credits":           trackInfo["credits"],
-			"measurement_count": trackInfo["measurements_count"],
-			"status":            trackInfo["status"],
-			"approved":          trackInfo["approved"],
+			"track_id":     resp["trackID"],
+			"marker_count": resp["markerCount"],
+			"track_index":  resp["trackIndex"],
 		},
 		"count":           len(normalized),
-		"total_available": len(filtered),
+		"total_available": totalAvailable,
 		"source":          "api",
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),

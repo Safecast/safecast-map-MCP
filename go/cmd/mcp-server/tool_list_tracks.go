@@ -19,8 +19,8 @@ var listTracksToolDef = mcp.NewTool("list_tracks",
 		mcp.Min(1), mcp.Max(12),
 	),
 	mcp.WithNumber("limit",
-		mcp.Description("Maximum number of results to return (default: 50, max: 200)"),
-		mcp.Min(1), mcp.Max(200),
+		mcp.Description("Maximum number of results to return (default: 50, max: 50000)"),
+		mcp.Min(1), mcp.Max(50000),
 		mcp.DefaultNumber(50),
 	),
 	mcp.WithReadOnlyHintAnnotation(true),
@@ -40,8 +40,8 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if month != 0 && (month < 1 || month > 12) {
 		return mcp.NewToolResultError("Month must be between 1 and 12"), nil
 	}
-	if limit < 1 || limit > 200 {
-		return mcp.NewToolResultError("Limit must be between 1 and 200"), nil
+	if limit < 1 || limit > 50000 {
+		return mcp.NewToolResultError("Limit must be between 1 and 50000"), nil
 	}
 
 	if dbAvailable() {
@@ -144,67 +144,47 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 }
 
 func listTracksAPI(ctx context.Context, year, month, limit int) (*mcp.CallToolResult, error) {
-	allImports, err := client.GetBGeigieImports(ctx, 1000)
+	var resp map[string]any
+	var err error
+
+	if year != 0 && month != 0 {
+		resp, err = client.GetTracksByMonth(ctx, year, month)
+	} else if year != 0 {
+		resp, err = client.GetTracksByYear(ctx, year)
+	} else {
+		resp, err = client.GetTracks(ctx)
+	}
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	filtered := allImports
-	if year != 0 {
-		var dateFiltered []map[string]any
-		for _, imp := range allImports {
-			createdAt, ok := imp["created_at"].(string)
-			if !ok || createdAt == "" {
-				continue
-			}
-			t, err := time.Parse(time.RFC3339, createdAt)
-			if err != nil {
-				t, err = time.Parse("2006-01-02T15:04:05.000Z", createdAt)
-				if err != nil {
-					continue
-				}
-			}
-			if t.Year() != year {
-				continue
-			}
-			if month != 0 && int(t.Month()) != month {
-				continue
-			}
-			dateFiltered = append(dateFiltered, imp)
-		}
-		filtered = dateFiltered
-	}
+	allTracks, _ := resp["tracks"].([]any)
+	totalAvailable := len(allTracks)
 
-	if limit > len(filtered) {
-		limit = len(filtered)
+	if limit > len(allTracks) {
+		limit = len(allTracks)
 	}
-	limited := filtered[:limit]
+	limited := allTracks[:limit]
 
-	tracks := make([]map[string]any, len(limited))
-	for i, imp := range limited {
-		tracks[i] = map[string]any{
-			"id":                 imp["id"],
-			"name":               imp["name"],
-			"description":        imp["description"],
-			"cities":             imp["cities"],
-			"credits":            imp["credits"],
-			"measurement_count":  imp["measurements_count"],
-			"status":             imp["status"],
-			"approved":           imp["approved"],
-			"rejected":           imp["rejected"],
-			"created_at":         imp["created_at"],
-			"updated_at":         imp["updated_at"],
-			"subtype":            imp["subtype"],
-			"would_auto_approve": imp["would_auto_approve"],
-			"orientation":        imp["orientation"],
-			"height":             imp["height"],
+	tracks := make([]map[string]any, 0, len(limited))
+	for _, raw := range limited {
+		t, ok := raw.(map[string]any)
+		if !ok {
+			continue
 		}
+		tracks = append(tracks, map[string]any{
+			"track_id":     t["trackID"],
+			"marker_count": t["markerCount"],
+			"first_id":     t["firstID"],
+			"last_id":      t["lastID"],
+			"index":        t["index"],
+			"api_url":      t["apiURL"],
+		})
 	}
 
 	result := map[string]any{
 		"count":           len(tracks),
-		"total_filtered":  len(filtered),
-		"total_available": len(allImports),
+		"total_available": totalAvailable,
 		"source":          "api",
 		"filters": map[string]any{
 			"year":  nilIfZero(year),
