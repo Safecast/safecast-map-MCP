@@ -45,6 +45,14 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError("Limit must be between 1 and 50000"), nil
 	}
 
+	// Use API for latest data (no year) or recent years to ensure consistency with web UI
+	// and to avoid database replication lag. API also sorts by ID (upload order),
+	// which better matches "latest uploads" expectation than DB's recording_date sort.
+	currentYear := time.Now().Year()
+	if year == 0 || year >= currentYear-1 {
+		return listTracksAPI(ctx, year, month, limit)
+	}
+
 	if dbAvailable() {
 		return listTracksDB(ctx, year, month, limit)
 	}
