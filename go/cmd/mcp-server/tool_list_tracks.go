@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -161,6 +162,11 @@ func listTracksAPI(ctx context.Context, year, month, limit int) (*mcp.CallToolRe
 	allTracks, _ := resp["tracks"].([]any)
 	totalAvailable := len(allTracks)
 
+	// Sort by last_id descending so most recently uploaded tracks come first.
+	sort.Slice(allTracks, func(i, j int) bool {
+		return trackLastID(allTracks[i]) > trackLastID(allTracks[j])
+	})
+
 	if limit > len(allTracks) {
 		limit = len(allTracks)
 	}
@@ -201,4 +207,17 @@ func nilIfZero(v int) any {
 		return nil
 	}
 	return v
+}
+
+// trackLastID extracts the lastID field from a raw track map for sorting.
+func trackLastID(v any) float64 {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return 0
+	}
+	f, ok := toFloat(m["lastID"])
+	if !ok {
+		return 0
+	}
+	return f
 }
