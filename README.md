@@ -153,3 +153,8 @@ Contributions welcome. If changing a tool's interface, please open an issue firs
 ## License
 
 MIT
+
+<a href="https://www.paypal.com/ncp/payment/MAXS4ZUSGPDD4">
+  <img src="https://safecast.org/wp-content/uploads/2024/08/Donation-PayPal-1.png" border="0" alt="Donate with PayPal" />
+</a>
+
