@@ -47,13 +47,18 @@ jobs:
           $SSH "fuser -k 3333/tcp 2>/dev/null; true" || true
           sleep 3
 
+          # Build environment variables for the server
+          ENV_VARS="MCP_BASE_URL=https://$VPS_HOST/mcp"
+          if [ -n "$DATABASE_URL" ]; then
+            ENV_VARS="$ENV_VARS DATABASE_URL='$DATABASE_URL'"
+          fi
+
           # Replace binary and start new server
           $SSH "cd /root/safecast-mcp-server && \
             rm -f safecast-mcp && \
             mv safecast-mcp-new safecast-mcp && \
             chmod +x safecast-mcp && \
-            DATABASE_URL='$DATABASE_URL' \
-            MCP_BASE_URL=https://$VPS_HOST \
+            $ENV_VARS \
             nohup ./safecast-mcp > /tmp/mcp-server.log 2>&1 &"
 
           # Wait for server to start
