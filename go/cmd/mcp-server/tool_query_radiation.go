@@ -63,15 +63,19 @@ func handleQueryRadiation(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 }
 
 func queryRadiationDB(ctx context.Context, lat, lon, radiusM float64, limit int) (*mcp.CallToolResult, error) {
+	// Use a bounding box pre-filter (&&) to hit the geometry spatial index first,
+	// then refine with ST_DWithin on geography for precise meter-based distance.
+	// Without the bbox filter, the geography cast bypasses the index → full table scan → timeout.
 	query := `
 		SELECT id, doserate AS value, 'µSv/h' AS unit,
 			to_timestamp(date) AS captured_at,
 			lat AS latitude, lon AS longitude,
 			device_id, altitude AS height, detector,
 			trackid, has_spectrum,
-			ST_Distance(geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) AS distance_m
+			ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) AS distance_m
 		FROM markers
-		WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
+		WHERE geom && ST_Expand(ST_SetSRID(ST_MakePoint($2, $1), 4326), $3 / 111000.0)
+		  AND ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
 		ORDER BY date DESC
 		LIMIT $4`
 
@@ -80,11 +84,12 @@ func queryRadiationDB(ctx context.Context, lat, lon, radiusM float64, limit int)
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	// Get total count
+	// Get total count (with same bbox pre-filter for performance)
 	countRow, _ := queryRow(ctx, `
 		SELECT count(*) AS total
 		FROM markers
-		WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)`,
+		WHERE geom && ST_Expand(ST_SetSRID(ST_MakePoint($2, $1), 4326), $3 / 111000.0)
+		  AND ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)`,
 		lat, lon, radiusM)
 	total := 0
 	if countRow != nil {
