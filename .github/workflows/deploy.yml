@@ -51,18 +51,12 @@ jobs:
           fi
           echo "$ENV_FILE" | $SSH "cat > /root/safecast-mcp-server/.env"
 
-          # Stop old server
-          $SSH "fuser -k 3333/tcp 2>/dev/null; true" || true
-          sleep 3
-
-          # Replace binary and start new server
-          # setsid creates a new session to fully detach from the SSH channel
+          # Replace binary and restart via systemd
           $SSH "cd /root/safecast-mcp-server && \
             rm -f safecast-mcp && \
             mv safecast-mcp-new safecast-mcp && \
             chmod +x safecast-mcp && \
-            set -a && . ./.env && set +a && \
-            setsid ./safecast-mcp > /tmp/mcp-server.log 2>&1 < /dev/null &"
+            systemctl restart safecast-mcp"
 
           # Wait for server to start
           sleep 3
