@@ -53,6 +53,7 @@ func main() {
 	mcpServer.AddTool(getTrackToolDef, instrument("get_track", handleGetTrack))
 	mcpServer.AddTool(deviceHistoryToolDef, instrument("device_history", handleDeviceHistory))
 	mcpServer.AddTool(getSpectrumToolDef, instrument("get_spectrum", handleGetSpectrum))
+	mcpServer.AddTool(listSpectraToolDef, instrument("list_spectra", handleListSpectra))
 	mcpServer.AddTool(radiationInfoToolDef, instrument("radiation_info", handleRadiationInfo))
 	mcpServer.AddTool(dbInfoToolDef, instrument("db_info", handleDBInfo))
 
