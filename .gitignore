@@ -1,6 +1,8 @@
 # Go build artifacts
 /bin/
 /pkg/
+*.exe
+*.log
 
 # Editor
 .vscode/
