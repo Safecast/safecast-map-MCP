@@ -94,7 +94,7 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 			s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
 			s.source_format, s.filename, s.created_at,
 			m.doserate, m.lat, m.lon, to_timestamp(m.date) AS captured_at,
-			m.bgeigie_import_id AS track_id
+			m.trackid AS track_id
 		FROM spectra s
 		JOIN markers m ON m.id = s.marker_id
 		WHERE 1=1`
