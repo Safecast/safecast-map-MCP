@@ -1,10 +1,10 @@
 # Safecast MCP Server connecting to simplemap.safecast.org
 
-An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 8 tools for querying radiation measurements, browsing sensor tracks, and accessing educational reference data.
+An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 9 tools for querying radiation measurements, browsing sensor tracks, and accessing educational reference data.
 
 ## Features
 
-- **8 tools** for querying Safecast radiation data
+- **9 tools** for querying Safecast radiation data
 - **Dual transport**: SSE and Streamable HTTP (works with Claude.ai)
 - **PostgreSQL + PostGIS** for fast spatial queries (with REST API fallback)
 - **Read-only** access to public Safecast data
@@ -21,6 +21,7 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 | `device_history` | Historical data from a monitoring device |
 | `get_spectrum` | Gamma spectroscopy data for a measurement |
 | `radiation_info` | Educational reference (units, safety levels, detectors, etc.) |
+| `db_info` | Database connection info and replication status (diagnostic) |
 
 ## Quick Start
 
@@ -65,7 +66,7 @@ MCP Server (Go, mcp-go)
     |
     +---> PostgreSQL + PostGIS (primary, if DATABASE_URL set)
     |
-    +---> api.safecast.org REST API (fallback)
+    +---> simplemap.safecast.org REST API (fallback)
 ```
 
 The server uses [`mcp-go`](https://github.com/mark3labs/mcp-go) for MCP protocol support. All tools attempt a direct database query first and fall back to the Safecast REST API if no database is configured or the query fails.
@@ -85,6 +86,7 @@ go/cmd/mcp-server/
   tool_device_history.go
   tool_get_spectrum.go
   tool_radiation_info.go
+  tool_db_info.go
 ```
 
 ## Development
@@ -103,7 +105,7 @@ GOOS=linux GOARCH=amd64 go build -o safecast-mcp ./cmd/mcp-server/
 
 ## Deployment
 
-Pushing to `main` automatically builds and deploys to the VPS via GitHub Actions (only when files in `go/` change).
+Pushing to `main` automatically builds and deploys to the VPS via GitHub Actions (only when Go source files, `go.mod`/`go.sum`, or the workflow itself change).
 
 ### How it works
 
@@ -142,8 +144,7 @@ And paste the contents of `~/.ssh/safecast-deploy` (the private key) as the `SSH
 cd go
 GOOS=linux GOARCH=amd64 go build -o safecast-mcp ./cmd/mcp-server/
 scp safecast-mcp root@vps-01.safecast.jp:/root/safecast-mcp-server/
-ssh root@vps-01.safecast.jp "cd /root/safecast-mcp-server && fuser -k 3333/tcp; sleep 2 && \
-  DATABASE_URL='...' MCP_BASE_URL=https://vps-01.safecast.jp nohup ./safecast-mcp > /tmp/mcp-server.log 2>&1 &"
+ssh root@vps-01.safecast.jp "systemctl restart safecast-mcp"
 ```
 
 ## Contributing
