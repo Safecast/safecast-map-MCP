@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -74,32 +75,70 @@ func handleSensorHistory(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 }
 
 func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate time.Time, limit int) (*mcp.CallToolResult, error) {
-	// Query the realtime_measurements table for time-series data
-	query := `
+	// Check what tables are available in the database
+	tablesQuery := `
+		SELECT table_name 
+		FROM information_schema.tables 
+		WHERE table_schema = 'public'
+		ORDER BY table_name
+	`
+	
+	tableRows, err := queryRows(ctx, tablesQuery)
+	if err != nil {
+		return mcp.NewToolResultError("Could not query database schema: " + err.Error()), nil
+	}
+	
+	// Look for tables that might contain real-time sensor data
+	availableTables := make([]string, len(tableRows))
+	realtimeTable := ""
+	for i, row := range tableRows {
+		if tableName, ok := row["table_name"].(string); ok {
+			availableTables[i] = tableName
+			// Check for possible real-time sensor data tables
+			if tableName == "realtime_measurements" || 
+			   tableName == "measurements_realtime" || 
+			   tableName == "sensors" ||
+			   tableName == "devices" {
+				realtimeTable = tableName
+			}
+		}
+	}
+	
+	if realtimeTable == "" {
+		// If no real-time table found, return available tables for debugging
+		result := map[string]any{
+			"message": "No known real-time sensor data tables found in database.",
+			"available_tables": availableTables,
+			"suggestion": "Real-time sensor data may not be available through this database connection.",
+		}
+		return jsonResult(result)
+	}
+	
+	// Query the appropriate real-time table for time-series data
+	query := fmt.Sprintf(`
 		SELECT 
 			id,
 			device_id,
-			device_name,
+			COALESCE(device_name, device_id) AS device_name,
 			value,
-			unit,
+			COALESCE(unit, 'µSv/h') AS unit,
 			to_timestamp(measured_at) AS captured_at,
 			lat AS latitude,
 			lon AS longitude,
-			transport,
-			height
-		FROM realtime_measurements
+			COALESCE(transport, '') AS transport
+		FROM %s
 		WHERE device_id = $1 
 			AND measured_at >= $2 
 			AND measured_at <= $3
 		ORDER BY measured_at ASC
-		LIMIT $4`
+		LIMIT $4`, realtimeTable)
 
 	startUnix := startDate.Unix()
 	endUnix := endDate.Unix()
 
 	rows, err := queryRows(ctx, query, deviceID, startUnix, endUnix, limit)
 	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
+		return mcp.NewToolResultError(fmt.Sprintf("Error querying %s table: %v", realtimeTable, err)), nil
 	}
 
 	measurements := make([]map[string]any, len(rows))
@@ -116,7 +155,6 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 				"longitude": r["longitude"],
 			},
 			"type":   r["transport"],
-			"height": r["height"],
 		}
 	}
 
@@ -134,6 +172,8 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 		"count":        len(measurements),
 		"source":       "database",
 		"measurements": measurements,
+		"table_used": realtimeTable,
+		"available_tables": availableTables,
 	}
 
 	return jsonResult(result)

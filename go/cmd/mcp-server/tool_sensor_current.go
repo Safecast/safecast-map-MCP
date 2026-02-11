@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -56,60 +57,97 @@ func handleSensorCurrent(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 }
 
 func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLon, maxLon float64, limit int) (*mcp.CallToolResult, error) {
+	// Check what tables are available in the database
+	tablesQuery := `
+		SELECT table_name 
+		FROM information_schema.tables 
+		WHERE table_schema = 'public'
+		ORDER BY table_name
+	`
+	
+	tableRows, err := queryRows(ctx, tablesQuery)
+	if err != nil {
+		return mcp.NewToolResultError("Could not query database schema: " + err.Error()), nil
+	}
+	
+	// Look for tables that might contain real-time sensor data
+	availableTables := make([]string, len(tableRows))
+	realtimeTable := ""
+	for i, row := range tableRows {
+		if tableName, ok := row["table_name"].(string); ok {
+			availableTables[i] = tableName
+			// Check for possible real-time sensor data tables
+			if tableName == "realtime_measurements" || 
+			   tableName == "measurements_realtime" || 
+			   tableName == "sensors" ||
+			   tableName == "devices" {
+				realtimeTable = tableName
+			}
+		}
+	}
+	
+	if realtimeTable == "" {
+		// If no real-time table found, return available tables for debugging
+		result := map[string]any{
+			"message": "No known real-time sensor data tables found in database.",
+			"available_tables": availableTables,
+			"suggestion": "Real-time sensor data may not be available through this database connection.",
+		}
+		return jsonResult(result)
+	}
+	
 	var query string
 	var args []interface{}
 
 	if deviceID != "" {
 		// Get latest reading from specific device
-		query = `
+		query = fmt.Sprintf(`
 			SELECT 
 				id,
 				device_id,
-				device_name,
+				COALESCE(device_name, device_id) AS device_name,
 				value,
-				unit,
+				COALESCE(unit, 'µSv/h') AS unit,
 				to_timestamp(measured_at) AS captured_at,
 				lat AS latitude,
 				lon AS longitude,
-				transport,
-				height
-			FROM realtime_measurements
+				COALESCE(transport, '') AS transport
+			FROM %s
 			WHERE device_id = $1
 			ORDER BY measured_at DESC
-			LIMIT 1`
+			LIMIT 1`, realtimeTable)
 		
 		args = []interface{}{deviceID}
 	} else {
 		// Get latest readings from all sensors in geographic area
-		query = `
+		query = fmt.Sprintf(`
 			SELECT 
 				rm.id,
 				rm.device_id,
-				rm.device_name,
+				COALESCE(rm.device_name, rm.device_id) AS device_name,
 				rm.value,
-				rm.unit,
+				COALESCE(rm.unit, 'µSv/h') AS unit,
 				to_timestamp(rm.measured_at) AS captured_at,
 				rm.lat AS latitude,
 				rm.lon AS longitude,
-				rm.transport,
-				rm.height
-			FROM realtime_measurements rm
+				COALESCE(rm.transport, '') AS transport
+			FROM %s rm
 			INNER JOIN (
 				SELECT device_id, MAX(measured_at) as max_measured_at
-				FROM realtime_measurements
+				FROM %s
 				WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
 				GROUP BY device_id
 			) latest ON rm.device_id = latest.device_id AND rm.measured_at = latest.max_measured_at
 			WHERE rm.lat >= $1 AND rm.lat <= $2 AND rm.lon >= $3 AND rm.lon <= $4
 			ORDER BY rm.measured_at DESC
-			LIMIT $5`
+			LIMIT $5`, realtimeTable, realtimeTable)
 		
 		args = []interface{}{minLat, maxLat, minLon, maxLon, limit}
 	}
 
 	rows, err := queryRows(ctx, query, args...)
 	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
+		return mcp.NewToolResultError(fmt.Sprintf("Error querying %s table: %v", realtimeTable, err)), nil
 	}
 
 	readings := make([]map[string]any, len(rows))
@@ -125,8 +163,7 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 				"latitude":  r["latitude"],
 				"longitude": r["longitude"],
 			},
-			"type":   r["transport"],
-			"height": r["height"],
+			"type": r["transport"],
 		}
 	}
 
@@ -134,6 +171,8 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 		"count":    len(readings),
 		"source":   "database",
 		"readings": readings,
+		"table_used": realtimeTable,
+		"available_tables": availableTables,
 	}
 
 	return jsonResult(result)
