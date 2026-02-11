@@ -1,10 +1,11 @@
-# Safecast MCP Server connecting to simplemap.safecast.org
+# Safecast MCP Server connecting to simplemap.safeplease commit and psu.cast.org
 
-An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 12 tools for querying radiation measurements, browsing sensor tracks, spectroscopy data, analytics, and educational reference data.
+An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 15 tools for querying both real-time sensor readings and historical radiation measurements, browsing sensor tracks, spectroscopy data, analytics, and educational reference data.
 
 ## Features
 
 - **15 tools** for querying Safecast radiation data
+- **Real-time and historical data access**: Query both real-time sensor readings and historical measurements
 - **Dual transport**: SSE and Streamable HTTP (works with Claude.ai)
 - **PostgreSQL + PostGIS** for fast spatial queries (with REST API fallback)
 - **DuckDB analytics** for usage statistics and aggregate queries
@@ -12,23 +13,35 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 
 ## Tools Overview
 
-| Tool | Description |
-|------|-------------|
-| `query_radiation` | Find measurements near a lat/lon coordinate |
-| `search_area` | Search within a geographic bounding box |
-| `list_tracks` | Browse bGeigie Import tracks by year/month |
-| `get_track` | Get measurements from a specific track |
-| `device_history` | Historical data from a monitoring device (now supports both bGeigie and real-time sensors) |
-| `list_sensors` | Discover active fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) by location or type |
-| `sensor_current` | Get the latest reading(s) from a specific sensor or from all sensors in a geographic area |
-| `sensor_history` | Pull time-series data from a fixed sensor over a date range |
-| `list_spectra` | Browse and search gamma spectroscopy records |
-| `get_spectrum` | Get full spectroscopy channel data for a measurement |
-| `radiation_info` | Educational reference (units, safety levels, detectors, isotopes) |
-| `radiation_stats` | Aggregate radiation statistics by year/month |
-| `query_analytics` | Server usage statistics (call counts, durations) |
-| `db_info` | Database connection and status (diagnostic) |
-| `ping` | Health check |
+| Tool | Data Type | Description |
+|------|-----------|-------------|
+| `query_radiation` | Historical | Find measurements near a lat/lon coordinate |
+| `search_area` | Historical | Search within a geographic bounding box |
+| `list_tracks` | Historical | Browse bGeigie Import tracks by year/month |
+| `get_track` | Historical | Get measurements from a specific track |
+| `device_history` | Mixed | Historical data from a monitoring device (supports both bGeigie and real-time sensors) |
+| `list_sensors` | Real-time | Discover active fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) by location or type |
+| `sensor_current` | Real-time | Get the latest reading(s) from a specific sensor or from all sensors in a geographic area |
+| `sensor_history` | Real-time | Pull time-series data from a fixed sensor over a date range |
+| `list_spectra` | Historical | Browse and search gamma spectroscopy records |
+| `get_spectrum` | Historical | Get full spectroscopy channel data for a measurement |
+| `radiation_info` | Reference | Educational reference (units, safety levels, detectors, isotopes) |
+| `radiation_stats` | Aggregate | Aggregate radiation statistics by year/month |
+| `query_analytics` | Analytics | Server usage statistics (call counts, durations) |
+| `db_info` | Diagnostic | Database connection and status (diagnostic) |
+| `ping` | Diagnostic | Health check |
+
+## Real-time Data Access
+
+The Safecast MCP server provides access to real-time radiation data from fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) through dedicated tools. These tools query the `realtime_measurements` table in the PostgreSQL database to retrieve the most current readings from active sensors.
+
+### Real-time Tools
+- `list_sensors`: Discover active fixed sensors by location or type
+- `sensor_current`: Get the latest reading(s) from specific sensors or geographic areas
+- `sensor_history`: Pull time-series data from fixed sensors over date ranges
+- `device_history`: Access both historical bGeigie data and real-time sensor data for a specific device
+
+> **Note**: Real-time data tools require a database connection to access the `realtime_measurements` table. These tools will fall back to the Safecast REST API if no database is configured.
 
 ## Tool Reference
 
@@ -311,7 +324,7 @@ go build -o safecast-mcp ./cmd/mcp-server/
 ./safecast-mcp
 ```
 
-The server listens on port 3333 by default.
+The server listens on port 3333 by default and provides access to both historical bGeigie data and real-time sensor readings.
 
 ### Environment Variables
 
@@ -345,11 +358,17 @@ Claude / AI client
 MCP Server (Go, mcp-go)
     |
     +---> PostgreSQL + PostGIS (primary, if DATABASE_URL set)
+          |
+          +---> markers table (historical bGeigie data)
+          |
+          +---> realtime_measurements table (real-time sensor data)
+          |
+          +---> spectra table (spectroscopy data)
     |
     +---> simplemap.safecast.org REST API (fallback)
 ```
 
-The server uses [`mcp-go`](https://github.com/mark3labs/mcp-go) for MCP protocol support. All tools attempt a direct database query first and fall back to the Safecast REST API if no database is configured or the query fails.
+The server uses [`mcp-go`](https://github.com/mark3labs/mcp-go) for MCP protocol support. All tools attempt a direct database query first and fall back to the Safecast REST API if no database is configured or the query fails. Real-time data tools specifically query the `realtime_measurements` table for current sensor readings.
 
 ## Project Structure
 
