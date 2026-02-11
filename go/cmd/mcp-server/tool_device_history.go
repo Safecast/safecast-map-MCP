@@ -70,22 +70,20 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 	}
 
 	// Then, query realtime_measurements table (fixed sensors)
-	// Note: realtime_measurements may not have all columns that markers table has
-	realtimeQuery := `
-		SELECT id, value, unit,
-			to_timestamp(measured_at) AS captured_at,
-			lat AS latitude, lon AS longitude,
-			device_name, transport, device_id,
-			CASE WHEN height IS NOT NULL THEN height ELSE NULL END AS height
-		FROM realtime_measurements
-		WHERE device_id = $1 AND measured_at >= $2 AND measured_at <= $3
-		ORDER BY measured_at DESC
-		LIMIT $4`
-
-	realtimeRows, err := queryRows(ctx, realtimeQuery, deviceID, startDate.Unix(), now.Unix(), limit)
-	if err != nil {
-		// If the height column doesn't exist, try a simpler query
-		realtimeQuery = `
+	// First, check if the table exists and what columns it has
+	columnsQuery := `
+		SELECT column_name
+		FROM information_schema.columns
+		WHERE table_name = 'realtime_measurements'
+		ORDER BY column_name
+	`
+	
+	var realtimeRows []map[string]any
+	
+	columnRows, err := queryRows(ctx, columnsQuery)
+	if err != nil || len(columnRows) == 0 {
+		// If we can't query the schema or table doesn't exist, try the basic query
+		realtimeQuery := `
 			SELECT id, value, unit,
 				to_timestamp(measured_at) AS captured_at,
 				lat AS latitude, lon AS longitude,
@@ -97,7 +95,44 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 
 		realtimeRows, err = queryRows(ctx, realtimeQuery, deviceID, startDate.Unix(), now.Unix(), limit)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return mcp.NewToolResultError("Error querying realtime_measurements table: " + err.Error()), nil
+		}
+	} else {
+		// Build the query based on available columns
+		hasHeight := false
+		for _, row := range columnRows {
+			if colName, ok := row["column_name"].(string); ok && colName == "height" {
+				hasHeight = true
+				break
+			}
+		}
+		
+		var realtimeQuery string
+		if hasHeight {
+			realtimeQuery = `
+				SELECT id, value, unit,
+					to_timestamp(measured_at) AS captured_at,
+					lat AS latitude, lon AS longitude,
+					device_name, transport, device_id, height
+				FROM realtime_measurements
+				WHERE device_id = $1 AND measured_at >= $2 AND measured_at <= $3
+				ORDER BY measured_at DESC
+				LIMIT $4`
+		} else {
+			realtimeQuery = `
+				SELECT id, value, unit,
+					to_timestamp(measured_at) AS captured_at,
+					lat AS latitude, lon AS longitude,
+					device_name, transport, device_id
+				FROM realtime_measurements
+				WHERE device_id = $1 AND measured_at >= $2 AND measured_at <= $3
+				ORDER BY measured_at DESC
+				LIMIT $4`
+		}
+
+		realtimeRows, err = queryRows(ctx, realtimeQuery, deviceID, startDate.Unix(), now.Unix(), limit)
+		if err != nil {
+			return mcp.NewToolResultError("Error querying realtime_measurements table: " + err.Error()), nil
 		}
 	}
 
