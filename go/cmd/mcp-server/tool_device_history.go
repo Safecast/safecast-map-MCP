@@ -52,43 +52,45 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 	now := time.Now().UTC()
 	startDate := now.AddDate(0, 0, -days)
 
-	// Try markers table first (device_id is text there)
-	query := `
+	// Query both markers table and realtime_measurements table
+	// First, try markers table (bGeigie imports)
+	markersQuery := `
 		SELECT id, doserate AS value, 'µSv/h' AS unit,
 			to_timestamp(date) AS captured_at,
 			lat AS latitude, lon AS longitude,
-			altitude AS height, detector, trackid
+			altitude AS height, detector, trackid::text AS track_id
 		FROM markers
 		WHERE device_id = $1 AND date >= $2 AND date <= $3
 		ORDER BY date DESC
 		LIMIT $4`
 
-	rows, err := queryRows(ctx, query, deviceID, startDate.Unix(), now.Unix(), limit)
+	markersRows, err := queryRows(ctx, markersQuery, deviceID, startDate.Unix(), now.Unix(), limit)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	// If no results from markers, try realtime_measurements
-	if len(rows) == 0 {
-		rtQuery := `
-			SELECT id, value, unit,
-				to_timestamp(measured_at) AS captured_at,
-				lat AS latitude, lon AS longitude,
-				device_name, transport
-			FROM realtime_measurements
-			WHERE device_id = $1 AND measured_at >= $2 AND measured_at <= $3
-			ORDER BY measured_at DESC
-			LIMIT $4`
+	// Then, query realtime_measurements table (fixed sensors)
+	realtimeQuery := `
+		SELECT id, value, unit,
+			to_timestamp(measured_at) AS captured_at,
+			lat AS latitude, lon AS longitude,
+			height, device_name, transport, device_id
+		FROM realtime_measurements
+		WHERE device_id = $1 AND measured_at >= $2 AND measured_at <= $3
+		ORDER BY measured_at DESC
+		LIMIT $4`
 
-		rows, err = queryRows(ctx, rtQuery, deviceID, startDate.Unix(), now.Unix(), limit)
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
+	realtimeRows, err := queryRows(ctx, realtimeQuery, deviceID, startDate.Unix(), now.Unix(), limit)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	measurements := make([]map[string]any, len(rows))
-	for i, r := range rows {
-		measurements[i] = map[string]any{
+	// Combine results and sort by timestamp (most recent first)
+	allMeasurements := make([]map[string]any, 0, len(markersRows)+len(realtimeRows))
+	
+	// Process markers results
+	for _, r := range markersRows {
+		measurement := map[string]any{
 			"id":    r["id"],
 			"value": r["value"],
 			"unit":  r["unit"],
@@ -99,7 +101,53 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 			},
 			"height":   r["height"],
 			"detector": r["detector"],
+			"source":   "bgeigie_import",
 		}
+		if r["track_id"] != nil {
+			measurement["track_id"] = r["track_id"]
+		}
+		allMeasurements = append(allMeasurements, measurement)
+	}
+	
+	// Process realtime results
+	for _, r := range realtimeRows {
+		measurement := map[string]any{
+			"id":    r["id"],
+			"value": r["value"],
+			"unit":  r["unit"],
+			"captured_at": r["captured_at"],
+			"location": map[string]any{
+				"latitude":  r["latitude"],
+				"longitude": r["longitude"],
+			},
+			"height":   r["height"],
+			"device_name": r["device_name"],
+			"type":     r["transport"],
+			"source":   "realtime_sensor",
+		}
+		allMeasurements = append(allMeasurements, measurement)
+	}
+
+	// Sort all measurements by captured_at timestamp (most recent first)
+	// Since queryRows returns timestamps as strings, we'll sort by the string representation
+	// which should work correctly for ISO 8601 formatted timestamps
+	for i := 0; i < len(allMeasurements)-1; i++ {
+		for j := 0; j < len(allMeasurements)-i-1; j++ {
+			// Compare timestamps as strings - swap if j-th element is older than (j+1)-th element
+			time1Str, ok1 := allMeasurements[j]["captured_at"].(string)
+			time2Str, ok2 := allMeasurements[j+1]["captured_at"].(string)
+			
+			// If both are valid strings and time1 is chronologically before time2, swap them
+			if ok1 && ok2 && time1Str < time2Str {
+				allMeasurements[j], allMeasurements[j+1] = allMeasurements[j+1], allMeasurements[j]
+			}
+		}
+	}
+
+	// Apply limit
+	measurements := allMeasurements
+	if len(measurements) > limit {
+		measurements = measurements[:limit]
 	}
 
 	capturedAfter := startDate.Format("2006-01-02") + " 00:00"

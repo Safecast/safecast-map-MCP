@@ -57,6 +57,11 @@ func main() {
 	mcpServer.AddTool(radiationInfoToolDef, instrument("radiation_info", handleRadiationInfo))
 	mcpServer.AddTool(dbInfoToolDef, instrument("db_info", handleDBInfo))
 
+	// Real-time sensor tools
+	mcpServer.AddTool(listSensorsToolDef, instrument("list_sensors", handleListSensors))
+	mcpServer.AddTool(sensorCurrentToolDef, instrument("sensor_current", handleSensorCurrent))
+	mcpServer.AddTool(sensorHistoryToolDef, instrument("sensor_history", handleSensorHistory))
+
     // Analytics Tools
     mcpServer.AddTool(queryAnalyticsToolDef, handleQueryAnalytics)
     mcpServer.AddTool(radiationStatsToolDef, handleRadiationStats)

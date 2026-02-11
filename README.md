@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 
 ## Features
 
-- **12 tools** for querying Safecast radiation data
+- **15 tools** for querying Safecast radiation data
 - **Dual transport**: SSE and Streamable HTTP (works with Claude.ai)
 - **PostgreSQL + PostGIS** for fast spatial queries (with REST API fallback)
 - **DuckDB analytics** for usage statistics and aggregate queries
@@ -18,7 +18,10 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 | `search_area` | Search within a geographic bounding box |
 | `list_tracks` | Browse bGeigie Import tracks by year/month |
 | `get_track` | Get measurements from a specific track |
-| `device_history` | Historical data from a monitoring device |
+| `device_history` | Historical data from a monitoring device (now supports both bGeigie and real-time sensors) |
+| `list_sensors` | Discover active fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) by location or type |
+| `sensor_current` | Get the latest reading(s) from a specific sensor or from all sensors in a geographic area |
+| `sensor_history` | Pull time-series data from a fixed sensor over a date range |
 | `list_spectra` | Browse and search gamma spectroscopy records |
 | `get_spectrum` | Get full spectroscopy channel data for a measurement |
 | `radiation_info` | Educational reference (units, safety levels, detectors, isotopes) |
@@ -134,6 +137,7 @@ Browse and search gamma spectroscopy records. Returns metadata (filename, device
 | `max_lon` | number | No | | Eastern boundary (requires all 4 bbox params) |
 | `source_format` | string | No | | Filter by file format (e.g., `"spe"`, `"csv"`) |
 | `device_model` | string | No | | Filter by detector name (partial match) |
+| `track_id` | string | No | | Filter by track identifier (e.g., `"8eh5m1"`, `"8ZnI7f"`) |
 | `limit` | number | No | 50 | Max results (1 to 500) |
 
 **Example**: Find all SPE spectrum files:
@@ -144,6 +148,16 @@ Browse and search gamma spectroscopy records. Returns metadata (filename, device
 **Example**: Browse all spectra (no filters):
 ```json
 {"name": "list_spectra", "arguments": {}}
+```
+
+**Example**: Get all spectrum files for a specific track:
+```json
+{"name": "list_spectra", "arguments": {"track_id": "8eh5m1"}}
+```
+
+**Example**: Get all spectrum files regardless of track (no filters):
+```json
+{"name": "list_spectra", "arguments": {"limit": 100}}
 ```
 
 Each result includes: `spectrum_id`, `marker_id`, `filename`, `source_format`, `device_model`, `channel_count`, `energy_range`, `live_time_sec`, `calibration`, `created_at`, and nested `marker` with location and track_id.

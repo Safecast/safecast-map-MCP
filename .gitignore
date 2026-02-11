@@ -3,6 +3,10 @@
 /pkg/
 *.exe
 *.log
+# Go binaries
+mcp-server
+safecast-mcp
+safecast-mcp-test
 
 # Editor
 .vscode/
