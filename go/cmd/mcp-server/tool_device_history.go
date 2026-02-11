@@ -70,11 +70,13 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 	}
 
 	// Then, query realtime_measurements table (fixed sensors)
+	// Note: realtime_measurements may not have all columns that markers table has
 	realtimeQuery := `
 		SELECT id, value, unit,
 			to_timestamp(measured_at) AS captured_at,
 			lat AS latitude, lon AS longitude,
-			height, device_name, transport, device_id
+			device_name, transport, device_id,
+			CASE WHEN height IS NOT NULL THEN height ELSE NULL END AS height
 		FROM realtime_measurements
 		WHERE device_id = $1 AND measured_at >= $2 AND measured_at <= $3
 		ORDER BY measured_at DESC
@@ -82,7 +84,21 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 
 	realtimeRows, err := queryRows(ctx, realtimeQuery, deviceID, startDate.Unix(), now.Unix(), limit)
 	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
+		// If the height column doesn't exist, try a simpler query
+		realtimeQuery = `
+			SELECT id, value, unit,
+				to_timestamp(measured_at) AS captured_at,
+				lat AS latitude, lon AS longitude,
+				device_name, transport, device_id
+			FROM realtime_measurements
+			WHERE device_id = $1 AND measured_at >= $2 AND measured_at <= $3
+			ORDER BY measured_at DESC
+			LIMIT $4`
+
+		realtimeRows, err = queryRows(ctx, realtimeQuery, deviceID, startDate.Unix(), now.Unix(), limit)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 	}
 
 	// Combine results and sort by timestamp (most recent first)
