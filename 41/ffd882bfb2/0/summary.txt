@@ -1,0 +1,8 @@
+
+
+Both fixes applied:
+
+1. **Line 1**: Fixed the corrupted title to `simplemap.safecast.org`
+2. **Project Structure**: Added the 3 missing sensor tool files (`tool_list_sensors.go`, `tool_sensor_current.go`, `tool_sensor_history.go`)
+
+The IDE diagnostic about "safecast" being an unknown word is just the spell checker — not a real issue.
