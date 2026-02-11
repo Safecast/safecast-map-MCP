@@ -70,7 +70,7 @@ func handleSensorHistory(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	}
 	
 	// Fallback to API if database not available
-	return mcp.NewToolResultError("Database connection required for sensor_history tool"), nil
+	return mcp.NewToolResultError("Database connection required for sensor_history tool. Please ensure DATABASE_URL is set to access real-time sensor data."), nil
 }
 
 func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate time.Time, limit int) (*mcp.CallToolResult, error) {

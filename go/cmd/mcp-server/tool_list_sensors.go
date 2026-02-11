@@ -52,7 +52,7 @@ func handleListSensors(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	}
 	
 	// Fallback to API if database not available
-	return mcp.NewToolResultError("Database connection required for list_sensors tool"), nil
+	return mcp.NewToolResultError("Database connection required for list_sensors tool. Please ensure DATABASE_URL is set to access real-time sensor data."), nil
 }
 
 func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLon, maxLon float64, limit int) (*mcp.CallToolResult, error) {

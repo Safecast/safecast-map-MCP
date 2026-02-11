@@ -110,7 +110,7 @@ Retrieve all radiation measurements from a specific track/journey. Use `list_tra
 
 ### device_history
 
-Get historical radiation measurements from a specific monitoring device over a time period.
+Get historical radiation measurements from a specific monitoring device over a time period. This tool now supports both bGeigie import data and real-time sensor data.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
@@ -122,6 +122,77 @@ Get historical radiation measurements from a specific monitoring device over a t
 ```json
 {"name": "device_history", "arguments": {"device_id": "12345", "days": 90}}
 ```
+
+> **Note**: This tool queries both the `markers` table (for bGeigie imports) and the `realtime_measurements` table (for fixed sensors) to provide a comprehensive history from the specified device.
+
+---
+
+### list_sensors
+
+Discover active fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) by location or type, returning device IDs, locations, status, and last reading timestamp.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `type` | string | No | | Filter by sensor type (e.g., 'Pointcast', 'Solarcast', 'bGeigieZen') |
+| `min_lat` | number | No | -90 | Southern boundary for geographic filter |
+| `max_lat` | number | No | 90 | Northern boundary for geographic filter |
+| `min_lon` | number | No | -180 | Western boundary for geographic filter |
+| `max_lon` | number | No | 180 | Eastern boundary for geographic filter |
+| `limit` | number | No | 50 | Max results (1 to 1000) |
+
+**Example**: Find all Pointcast sensors in Japan:
+```json
+{"name": "list_sensors", "arguments": {"type": "Pointcast", "min_lat": 30, "max_lat": 46, "min_lon": 129, "max_lon": 146}}
+```
+
+> **Note**: Requires database connection to access `realtime_measurements` table.
+
+---
+
+### sensor_current
+
+Get the latest reading(s) from a specific sensor or from all sensors in a geographic area.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `device_id` | string | No | | Specific device ID to get latest reading from |
+| `min_lat` | number | No | -90 | Southern boundary for geographic filter |
+| `max_lat` | number | No | 90 | Northern boundary for geographic filter |
+| `min_lon` | number | No | -180 | Western boundary for geographic filter |
+| `max_lon` | number | No | 180 | Eastern boundary for geographic filter |
+| `limit` | number | No | 25 | Max results (1 to 1000) |
+
+**Example**: Get latest reading from a specific sensor:
+```json
+{"name": "sensor_current", "arguments": {"device_id": "sensor-123"}}
+```
+
+**Example**: Get latest readings from all sensors in Tokyo:
+```json
+{"name": "sensor_current", "arguments": {"min_lat": 35.5, "max_lat": 35.8, "min_lon": 139.5, "max_lon": 139.9, "limit": 50}}
+```
+
+> **Note**: Requires database connection to access `realtime_measurements` table.
+
+---
+
+### sensor_history
+
+Pull time-series data from a fixed sensor over a date range.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `device_id` | string | Yes | | Device identifier to get historical data from |
+| `start_date` | string | Yes | | Start date in YYYY-MM-DD format |
+| `end_date` | string | No | Today | End date in YYYY-MM-DD format |
+| `limit` | number | No | 200 | Max results (1 to 10,000) |
+
+**Example**: Get 30 days of history from a sensor:
+```json
+{"name": "sensor_history", "arguments": {"device_id": "sensor-123", "start_date": "2024-01-01", "end_date": "2024-01-31"}}
+```
+
+> **Note**: Requires database connection to access `realtime_measurements` table.
 
 ---
 
