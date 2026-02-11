@@ -8,7 +8,7 @@ import (
 )
 
 var listSpectraToolDef = mcp.NewTool("list_spectra",
-	mcp.WithDescription("Browse gamma spectroscopy records. Returns metadata without channel data. Use get_spectrum with a marker_id from results to fetch full channel data."),
+	mcp.WithDescription("Browse gamma spectroscopy records. Returns metadata without channel data. Use get_spectrum with a marker_id from results to fetch full channel data. Can filter by track ID, geographic bounds, file format, or device model. Call with no filters to get all spectra."),
 	mcp.WithNumber("min_lat",
 		mcp.Description("Southern boundary latitude (requires all 4 bbox params)"),
 		mcp.Min(-90), mcp.Max(90),
@@ -30,6 +30,9 @@ var listSpectraToolDef = mcp.NewTool("list_spectra",
 	),
 	mcp.WithString("device_model",
 		mcp.Description("Filter by detector/device model name"),
+	),
+	mcp.WithString("track_id",
+		mcp.Description("Filter by track identifier (e.g., '8eh5m1', '8ZnI7f')"),
 	),
 	mcp.WithNumber("limit",
 		mcp.Description("Maximum number of results to return (default: 50, max: 500)"),
@@ -80,15 +83,16 @@ func handleListSpectra(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 
 	sourceFormat := req.GetString("source_format", "")
 	deviceModel := req.GetString("device_model", "")
+	trackID := req.GetString("track_id", "")
 	limit := req.GetInt("limit", 50)
 	if limit < 1 || limit > 500 {
 		return mcp.NewToolResultError("Limit must be between 1 and 500"), nil
 	}
 
-	return listSpectraDB(ctx, hasBBox, minLat, maxLat, minLon, maxLon, sourceFormat, deviceModel, limit)
+	return listSpectraDB(ctx, hasBBox, minLat, maxLat, minLon, maxLon, sourceFormat, deviceModel, trackID, limit)
 }
 
-func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, maxLon float64, sourceFormat, deviceModel string, limit int) (*mcp.CallToolResult, error) {
+func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, maxLon float64, sourceFormat, deviceModel, trackID string, limit int) (*mcp.CallToolResult, error) {
 	// Exclude s.channels to avoid huge payloads
 	baseSelect := `SELECT s.id, s.marker_id, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 			s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
@@ -140,6 +144,16 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 
 		countBase += fmt.Sprintf(" AND s.device_model ILIKE $%d", countArgIdx)
 		countArgs = append(countArgs, "%"+deviceModel+"%")
+		countArgIdx++
+	}
+
+	if trackID != "" {
+		baseSelect += fmt.Sprintf(" AND m.trackid = $%d", argIdx)
+		args = append(args, trackID)
+		argIdx++
+
+		countBase += fmt.Sprintf(" AND m.trackid = $%d", countArgIdx)
+		countArgs = append(countArgs, trackID)
 		countArgIdx++
 	}
 
@@ -204,6 +218,9 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 	}
 	if deviceModel != "" {
 		filters["device_model"] = deviceModel
+	}
+	if trackID != "" {
+		filters["track_id"] = trackID
 	}
 
 	result := map[string]any{

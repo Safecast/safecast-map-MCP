@@ -129,16 +129,33 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 	}
 
 	// Sort all measurements by captured_at timestamp (most recent first)
-	// Since queryRows returns timestamps as strings, we'll sort by the string representation
-	// which should work correctly for ISO 8601 formatted timestamps
+	// Since queryRows returns timestamps as interface{}, we need to handle both string and time.Time types
 	for i := 0; i < len(allMeasurements)-1; i++ {
 		for j := 0; j < len(allMeasurements)-i-1; j++ {
-			// Compare timestamps as strings - swap if j-th element is older than (j+1)-th element
-			time1Str, ok1 := allMeasurements[j]["captured_at"].(string)
-			time2Str, ok2 := allMeasurements[j+1]["captured_at"].(string)
+			// Get the timestamp values - they could be strings or time.Time objects
+			time1Val := allMeasurements[j]["captured_at"]
+			time2Val := allMeasurements[j+1]["captured_at"]
 			
-			// If both are valid strings and time1 is chronologically before time2, swap them
-			if ok1 && ok2 && time1Str < time2Str {
+			// Compare timestamps - swap if j-th element is older than (j+1)-th element
+			shouldSwap := false
+			
+			// Handle different possible types for timestamps
+			switch v1 := time1Val.(type) {
+			case string:
+				if v2, ok := time2Val.(string); ok {
+					if v1 < v2 {
+						shouldSwap = true
+					}
+				}
+			case time.Time:
+				if v2, ok := time2Val.(time.Time); ok {
+					if v1.Before(v2) {
+						shouldSwap = true
+					}
+				}
+			}
+			
+			if shouldSwap {
 				allMeasurements[j], allMeasurements[j+1] = allMeasurements[j+1], allMeasurements[j]
 			}
 		}
