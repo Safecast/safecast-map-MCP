@@ -9,6 +9,7 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 - **Dual transport**: SSE and Streamable HTTP (works with Claude.ai)
 - **PostgreSQL + PostGIS** for fast spatial queries (with REST API fallback)
 - **DuckDB analytics** for usage statistics and aggregate queries
+- **Structured runtime logging** for monitoring tool usage and performance
 - **Read-only** access to public Safecast data
 
 ## Tools Overview
@@ -304,6 +305,18 @@ Get aggregate radiation statistics from the Safecast database grouped by time in
 
 Get usage statistics for all MCP tools including call counts, average duration, and max duration. Powered by DuckDB local logs. No parameters required.
 
+### Structured Runtime Logging
+
+The server now includes comprehensive structured logging for monitoring AI tool usage and performance. The logging system:
+
+- Records session IDs, timestamps, tool names, query durations, and error information
+- Sanitizes query content to protect sensitive data while preserving query structure
+- Provides asynchronous logging that doesn't block tool execution
+- Tracks commit hashes for deployment correlation
+- Optionally exports logs to external systems when configured
+
+This enables better observability into how tools are being used and helps identify performance bottlenecks.
+
 ---
 
 ### db_info
@@ -357,13 +370,29 @@ Claude / AI client
     v
 MCP Server (Go, mcp-go)
     |
-    +---> PostgreSQL + PostGIS (primary, if DATABASE_URL set)
+    +---> Tool Execution with Structured Logging
           |
-          +---> markers table (historical bGeigie data)
+          +---> PostgreSQL + PostGIS (primary, if DATABASE_URL set)
+          |     |
+          |     +---> markers table (historical bGeigie data)
+          |     |
+          |     +---> realtime_measurements table (real-time sensor data)
+          |     |
+          |     +---> spectra table (spectroscopy data)
           |
-          +---> realtime_measurements table (real-time sensor data)
+          +---> DuckDB Analytics Engine
+          |     |
+          |     +---> Local usage statistics
           |
-          +---> spectra table (spectroscopy data)
+          +---> Structured Logging System
+                |
+                +---> Session tracking
+                |
+                +---> Performance metrics
+                |
+                +---> Error logging
+                |
+                +---> Optional external export
     |
     +---> simplemap.safecast.org REST API (fallback)
 ```
@@ -375,6 +404,7 @@ The server uses [`mcp-go`](https://github.com/mark3labs/mcp-go) for MCP protocol
 ```
 go/cmd/mcp-server/
   main.go              # Server setup, tool registration, dual transport
+  ai_logging.go        # Structured AI session logging and metrics
   api_client.go        # Safecast REST API client
   db_client.go         # PostgreSQL connection pool (pgx)
   duckdb_client.go     # DuckDB analytics engine
