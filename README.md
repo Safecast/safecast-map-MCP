@@ -522,7 +522,40 @@ Contributions welcome. If changing a tool's interface, please open an issue firs
 
 MIT
 
+## Technical Implementation Details
+
+### CORS Processing
+The application handles cross-origin resource sharing through standard HTTP headers managed by the underlying `mcp-go` library.
+
+### Logarithmic Scaling
+Used for mapping radiation values to visual properties like marker opacity and color intensity for better visualization of wide-ranging values.
+
+### Timestamp Conversion
+The application converts Unix timestamps from the API to human-readable formats for display in map popups.
+
+### Responsive Design
+The application adapts to various screen sizes using responsive CSS techniques.
+
+## API Integration Details
+
+- **Endpoints Used**: 
+  - `/mcp/sse` (SSE transport)
+  - `/mcp/message` (message transport) 
+  - `/mcp-http` (streamable HTTP transport)
+- **Data Types**: JSON responses containing radiation measurements, sensor information, and spectroscopy data
+- **Request Methods**: Both GET (for SSE) and POST (for message passing) are supported
+
+## Browser Compatibility Requirements
+
+- HTML5/CSS3/ES5+ compatible browsers
+- WebSocket support for SSE communication
+- Modern JavaScript engine for processing MCP protocol messages
+
+## Deployment Notes
+
+- The application **must** be served via HTTP(S) server - direct file opening in browsers will not work due to CORS restrictions and API communication requirements.
+- Requires a backend server to handle MCP protocol communication with AI clients like Claude.
+
 <a href="https://www.paypal.com/ncp/payment/MAXS4ZUSGPDD4">
   <img src="https://safecast.org/wp-content/uploads/2024/08/Donation-PayPal-1.png" border="0" alt="Donate with PayPal" />
 </a>
-
