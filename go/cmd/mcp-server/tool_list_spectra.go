@@ -229,6 +229,7 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 		"source":          "database",
 		"filters":         filters,
 		"spectra":         spectra,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

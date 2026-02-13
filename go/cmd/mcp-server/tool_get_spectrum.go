@@ -85,6 +85,7 @@ func getSpectrumDB(ctx context.Context, markerID int) (*mcp.CallToolResult, erro
 			"longitude":   row["lon"],
 			"captured_at": row["captured_at"],
 		},
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -112,6 +113,7 @@ func getSpectrumAPI(ctx context.Context, markerID int) (*mcp.CallToolResult, err
 			"source_format":  spectrum["sourceFormat"],
 			"filename":       spectrum["filename"],
 		},
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

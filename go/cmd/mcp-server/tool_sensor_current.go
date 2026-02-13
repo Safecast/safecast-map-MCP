@@ -173,6 +173,7 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 		"readings": readings,
 		"table_used": realtimeTable,
 		"available_tables": availableTables,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

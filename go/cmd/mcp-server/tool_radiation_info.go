@@ -38,6 +38,7 @@ func handleRadiationInfo(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	result := map[string]any{
 		"topic":   normalized,
 		"content": content,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

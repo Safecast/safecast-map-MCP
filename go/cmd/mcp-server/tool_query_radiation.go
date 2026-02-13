@@ -133,6 +133,7 @@ func queryRadiationDB(ctx context.Context, lat, lon, radiusM float64, limit int)
 			"radius_m": radiusM,
 		},
 		"measurements": measurements,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -161,6 +162,7 @@ func queryRadiationAPI(ctx context.Context, lat, lon, radiusM float64, limit int
 			"radius_m": radiusM,
 		},
 		"measurements": normalized,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

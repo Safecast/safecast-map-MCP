@@ -96,5 +96,6 @@ func handleDBInfo(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	return jsonResult(map[string]any{
 		"status":     "connected",
 		"connection": info,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	})
 }

@@ -120,6 +120,7 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    measurements,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -158,6 +159,7 @@ func getTrackAPI(ctx context.Context, trackIDStr string, fromID, toID, limit int
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    normalized,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

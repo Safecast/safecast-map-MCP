@@ -147,6 +147,7 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 			"month": nilIfZero(month),
 		},
 		"tracks": tracks,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -205,6 +206,7 @@ func listTracksAPI(ctx context.Context, year, month, limit int) (*mcp.CallToolRe
 			"month": nilIfZero(month),
 		},
 		"tracks": tracks,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

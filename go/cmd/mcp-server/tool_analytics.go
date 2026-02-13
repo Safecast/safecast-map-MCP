@@ -62,6 +62,7 @@ func handleQueryAnalytics(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return jsonResult(map[string]any{
 		"stats": stats,
 		"source": "duckdb_local_log",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	})
 }
 
@@ -151,5 +152,6 @@ func handleRadiationStats(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		"interval": interval,
 		"data":     results,
 		"source":   "duckdb_postgres_attach",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	})
 }

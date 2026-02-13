@@ -141,6 +141,7 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 			"max_lon": maxLon,
 		},
 		"measurements": measurements,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -173,6 +174,7 @@ func searchAreaAPI(ctx context.Context, minLat, maxLat, minLon, maxLon float64, 
 			"max_lon": maxLon,
 		},
 		"measurements": normalized,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
