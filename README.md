@@ -1,4 +1,4 @@
-# Safecast MCP Server connecting to simplemap.safecast.org
+# Safecast MCP Server connecting to simplemap.safecast.org V0.9
 
 An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 15 tools for querying both real-time sensor readings and historical radiation measurements, browsing sensor tracks, spectroscopy data, analytics, and educational reference data.
 
