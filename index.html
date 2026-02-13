@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Safecast Radiation Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="/css/main.css" />
+  
+  <!-- Favicon -->
+  <link rel="shortcut icon" type="image/x-icon" href="img/favicon.ico">
+
+  <!-- jQuery -->
+  <script src="/lib/jquery-2.1.1.min.js"></script>
+
+  <!-- Leaflet JavaScript -->
+  <script src="/lib/leaflet/leaflet.js"></script>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div id="header">
+    <div id="title">
+      <a href="http://safecast.org" target="_blank"><img src="img/safecast_logo_white_small.png" border="0"></a>
+      <h1>Radiation Map</h1>
+    </div>
+    
+    <div id="controls">
+      <form>
+        <select id="datatype" onchange="addMarkers(this.value)">
+          <option value="air">Air Measurements</option>
+          <option value="water">Water Measurements</option>
+          <option value="solid">Solid Measurements</option>
+        </select>
+        
+        <label>Low Value: <input type="text" id="lowvalue" value="0.1"/></label>
+        <label>High Value: <input type="text" id="highvalue" value="10.0"/></label>
+        <input type="button" value="Update" onclick="update_display()"/>
+      </form>
+    </div>
+  </div>
+  
+  <div id="footer">
+    <p>Measurements are being collected via <a href="http://safecast.org" target="_blank">Safecast</a> monitoring stations.</p>
+  </div>
+
+  <!-- Application JavaScript -->
+  <script src="/js/app.js"></script>
+</body>
+</html>
