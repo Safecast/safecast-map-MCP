@@ -351,7 +351,11 @@ The server listens on port 3333 by default and provides access to both historica
 - **SSE**: `/mcp/sse` (GET) and `/mcp/message` (POST)
 - **Streamable HTTP**: `/mcp-http` (POST)
 
-## Connecting to Claude.ai
+## Connecting Claude to the MCP
+
+### Using the Deployed Server
+
+To connect Claude to the deployed Safecast MCP server:
 
 1. Open [claude.ai](https://claude.ai) in your browser
 2. Go to **Settings** (bottom-left) > **Integrations**
@@ -361,6 +365,34 @@ The server listens on port 3333 by default and provides access to both historica
    https://vps-01.safecast.jp/mcp-http
    ```
 5. Click **Save** — the Safecast tools will now be available in your conversations
+
+### Running Locally
+
+To connect Claude to a locally running MCP server:
+
+1. Start your local MCP server:
+   ```bash
+   cd go
+   go run ./cmd/mcp-server/
+   ```
+   
+2. The server will start on `http://localhost:3333` by default
+
+3. Expose your local server to the internet using a tool like ngrok:
+   ```bash
+   ngrok http 3333
+   ```
+   
+4. Take the HTTPS URL provided by ngrok (e.g., `https://abc123.ngrok.io`) and append `/mcp-http` to form the endpoint URL (e.g., `https://abc123.ngrok.io/mcp-http`)
+
+5. Follow steps 2-5 from the "Using the Deployed Server" section above, using your ngrok URL instead
+
+### Configuration Notes
+
+- The MCP server supports both SSE and Streamable HTTP transports
+- The Streamable HTTP endpoint (`/mcp-http`) is recommended for Claude integration
+- If using a custom domain or different port, adjust the endpoint URL accordingly
+- Make sure your server is accessible from the internet for Claude to connect
 
 ## Architecture
 
