@@ -194,6 +194,16 @@ func normalizeGetMarker(m map[string]any) map[string]any {
 
 // jsonResult serializes v to indented JSON and returns it as a tool result.
 func jsonResult(v any) (*mcp.CallToolResult, error) {
+	// Add AI-generated disclaimer to map-type responses
+	if resultMap, ok := v.(map[string]any); ok {
+		enhancedResult := make(map[string]any, len(resultMap)+1)
+		for k, v := range resultMap {
+			enhancedResult[k] = v
+		}
+		enhancedResult["_ai_generated_note"] = "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system."
+		v = enhancedResult
+	}
+	
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError("failed to serialize response"), nil
