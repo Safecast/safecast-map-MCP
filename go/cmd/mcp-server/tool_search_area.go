@@ -7,7 +7,7 @@ import (
 )
 
 var searchAreaToolDef = mcp.NewTool("search_area",
-	mcp.WithDescription("Find radiation measurements within a geographic bounding box."),
+	mcp.WithDescription("Find radiation measurements within a geographic bounding box. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithNumber("min_lat",
 		mcp.Description("Southern boundary latitude"),
 		mcp.Min(-90), mcp.Max(90),

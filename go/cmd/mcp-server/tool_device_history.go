@@ -8,7 +8,7 @@ import (
 )
 
 var deviceHistoryToolDef = mcp.NewTool("device_history",
-	mcp.WithDescription("Get historical radiation measurements from a specific monitoring device over a time period."),
+	mcp.WithDescription("Get historical radiation measurements from a specific monitoring device over a time period. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithString("device_id",
 		mcp.Description("Device identifier"),
 		mcp.Required(),

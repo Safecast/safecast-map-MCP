@@ -8,7 +8,7 @@ import (
 )
 
 var sensorCurrentToolDef = mcp.NewTool("sensor_current",
-	mcp.WithDescription("Get the latest reading(s) from a specific sensor or from all sensors in a geographic area."),
+	mcp.WithDescription("Get the latest reading(s) from a specific sensor or from all sensors in a geographic area. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithString("device_id",
 		mcp.Description("Specific device ID to get latest reading from"),
 	),

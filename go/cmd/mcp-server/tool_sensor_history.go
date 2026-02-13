@@ -9,7 +9,7 @@ import (
 )
 
 var sensorHistoryToolDef = mcp.NewTool("sensor_history",
-	mcp.WithDescription("Pull time-series data from a fixed sensor over a date range."),
+	mcp.WithDescription("Pull time-series data from a fixed sensor over a date range. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithString("device_id",
 		mcp.Description("Device identifier to get historical data from"),
 		mcp.Required(),

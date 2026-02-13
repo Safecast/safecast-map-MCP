@@ -8,7 +8,7 @@ import (
 )
 
 var listSpectraToolDef = mcp.NewTool("list_spectra",
-	mcp.WithDescription("Browse gamma spectroscopy records. Returns metadata without channel data. Use get_spectrum with a marker_id from results to fetch full channel data. Can filter by track ID, geographic bounds, file format, or device model. Call with no filters to get all spectra."),
+	mcp.WithDescription("Browse gamma spectroscopy records. Returns metadata without channel data. Use get_spectrum with a marker_id from results to fetch full channel data. Can filter by track ID, geographic bounds, file format, or device model. Call with no filters to get all spectra. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithNumber("min_lat",
 		mcp.Description("Southern boundary latitude (requires all 4 bbox params)"),
 		mcp.Min(-90), mcp.Max(90),

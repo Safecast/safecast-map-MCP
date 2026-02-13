@@ -7,7 +7,7 @@ import (
 )
 
 var getSpectrumToolDef = mcp.NewTool("get_spectrum",
-	mcp.WithDescription("Get gamma spectroscopy data for a specific measurement point."),
+	mcp.WithDescription("Get gamma spectroscopy data for a specific measurement point. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithNumber("marker_id",
 		mcp.Description("Marker/measurement identifier"),
 		mcp.Min(1),
