@@ -1,4 +1,4 @@
-export DASHSCOPE_API_KEY="sk-your-key-here"
+export ALIBABA_CLOUD_API_KEY="sk-your-key-here"
 export MCP_SERVER_URL="https://vps-01.safecast.jp/mcp-http"
 export QWEN_MODEL="qwen-plus"
 

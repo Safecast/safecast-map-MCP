@@ -443,13 +443,22 @@ func (a *Agent) Run(ctx context.Context, userMessage string) (string, error) {
 // ============================================================
 
 func main() {
+	// Test the API key first
+	testAPIKey()
+	
 	mcpURL := envOrDefault("MCP_SERVER_URL", "https://vps-01.safecast.jp/mcp-http")
-	qwenKey := os.Getenv("DASHSCOPE_API_KEY")
+	
+	// Check for ALIBABA_CLOUD_API_KEY first, then fall back to DASHSCOPE_API_KEY
+	qwenKey := os.Getenv("ALIBABA_CLOUD_API_KEY")
+	if qwenKey == "" {
+		qwenKey = os.Getenv("DASHSCOPE_API_KEY")
+	}
+	
 	qwenModel := envOrDefault("QWEN_MODEL", "qwen-plus")
 	listenAddr := envOrDefault("LISTEN_ADDR", ":8080")
 
 	if qwenKey == "" {
-		log.Fatal("DASHSCOPE_API_KEY environment variable required")
+		log.Fatal("ALIBABA_CLOUD_API_KEY or DASHSCOPE_API_KEY environment variable required")
 	}
 
 	mcpClient := NewMCPClient(mcpURL)
@@ -504,13 +513,58 @@ func envOrDefault(key, def string) string {
 	return def
 }
 
+// Test API key function
+func testAPIKey() {
+	apiKey := os.Getenv("ALIBABA_CLOUD_API_KEY")
+	if apiKey == "" {
+		apiKey = os.Getenv("DASHSCOPE_API_KEY")
+	}
+	if apiKey == "" {
+		log.Fatal("ALIBABA_CLOUD_API_KEY or DASHSCOPE_API_KEY environment variable not set")
+	}
+
+	// Create a simple request to test the API key using the same endpoint as the Qwen client
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	// Create a minimal chat completion request to test the API key
+	requestBody := `{"model":"qwen-turbo","messages":[{"role":"user","content":"test"}]}`
+	
+	req, err := http.NewRequest("POST", "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", strings.NewReader(requestBody))
+	if err != nil {
+		log.Printf("Error creating request: %v", err)
+		return
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error making request: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+	
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Error reading response: %v", err)
+		return
+	}
+	
+	if resp.StatusCode == 200 {
+		log.Println("✓ API key is valid! Successfully connected to Alibaba Cloud.")
+	} else {
+		log.Printf("✗ API key test failed. Status: %d, Response: %s", resp.StatusCode, string(body))
+	}
+}
+
 const indexHTML = `<!DOCTYPE html>
 <html>
 <head>
   <title>MCP Chat</title>
   <style>
     body { font-family: sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; }
-    #chat { border: 1px solid #ccc; padding: 16px; min-height: 300px; margin-bottom: 12px; 
+    #chat { border: 1px solid #ccc; padding: 16px; min-height: 300px; margin-bottom: 12px;
             overflow-y: auto; max-height: 500px; white-space: pre-wrap; }
     #input { width: calc(100% - 80px); padding: 8px; }
     button { padding: 8px 16px; }
