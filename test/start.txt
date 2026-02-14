@@ -1,0 +1,18 @@
+export DASHSCOPE_API_KEY="sk-your-key-here"
+export MCP_SERVER_URL="https://vps-01.safecast.jp/mcp-http"
+export QWEN_MODEL="qwen-plus"
+
+go run main.go
+
+
+Then open http://localhost:8080 in your browser.
+Key Design Decisions
+No external dependencies — uses only Go's standard library. The MCP client handles both direct JSON and SSE response formats, which covers most MCP server implementations.
+The tool-call loop in Agent.Run() is the core: Qwen decides which MCP tool to call → Go executes it → feeds the result back → Qwen either calls another tool or returns the final answer. Capped at 5 rounds to prevent runaway loops.
+For self-hosted Qwen (via Ollama or vLLM), just change the BaseURL:
+go// Ollama
+qwenClient.BaseURL = "http://localhost:11434/v1"
+
+// vLLM
+qwenClient.BaseURL = "http://localhost:8000/v1"
+Want me to add streaming support or any other features?
