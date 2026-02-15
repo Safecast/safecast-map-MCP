@@ -87,7 +87,7 @@ func logAISession(toolName string, query string, duration int64, err error) {
 	}()
 }
 
-// executeWithLogging wraps a DuckDB query execution with consistent timing and logging.
+// executeWithLogging logs at MCP runtime (tool execution) level.
 // It must never panic and must not block tool execution (logging is asynchronous).
 func executeWithLogging(
 	toolName string,
