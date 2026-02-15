@@ -29,15 +29,16 @@ func handleQueryAnalytics(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		return mcp.NewToolResultError("DuckDB analytics engine is not initialized"), nil
 	}
 
-    // Execute query
-	rows, err := duckDB.Query(`
+	const analyticsQuery = `
 		SELECT tool_name, COUNT(*) as count, 
                AVG(duration_ms) as avg_ms, 
                MAX(duration_ms) as max_ms
 		FROM mcp_query_log
 		GROUP BY tool_name
 		ORDER BY count DESC
-	`)
+	`
+
+	rows, err := duckDB.Query(analyticsQuery)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Query failed: %v", err)), nil
 	}
@@ -111,7 +112,7 @@ func handleRadiationStats(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		`
 	}
 
-    // Execute against DuckDB which proxies to Postgres
+	// Execute against DuckDB which proxies to Postgres
 	rows, err := duckDB.Query(query)
 	if err != nil {
         // Provide helpful error if table doesn't exist (e.g. schema mismatch)

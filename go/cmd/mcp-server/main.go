@@ -41,9 +41,7 @@ func main() {
 		mcp.NewTool("ping",
 			mcp.WithDescription("Health check tool"),
 		),
-		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			return mcp.NewToolResultText("pong"), nil
-		},
+		instrument("ping", pingHandler),
 	)
 
 	// Safecast tools (Instrumented)
@@ -62,9 +60,9 @@ func main() {
 	mcpServer.AddTool(sensorCurrentToolDef, instrument("sensor_current", handleSensorCurrent))
 	mcpServer.AddTool(sensorHistoryToolDef, instrument("sensor_history", handleSensorHistory))
 
-    // Analytics Tools
-    mcpServer.AddTool(queryAnalyticsToolDef, handleQueryAnalytics)
-    mcpServer.AddTool(radiationStatsToolDef, handleRadiationStats)
+	// Analytics Tools
+	mcpServer.AddTool(queryAnalyticsToolDef, instrument("query_analytics", handleQueryAnalytics))
+	mcpServer.AddTool(radiationStatsToolDef, instrument("radiation_stats", handleRadiationStats))
 
 	baseURL := os.Getenv("MCP_BASE_URL")
 	if baseURL == "" {
@@ -103,30 +101,34 @@ func main() {
 
 }
 
+// pingHandler is the health check tool implementation.
+func pingHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return mcp.NewToolResultText("pong"), nil
+}
+
 // instrument wraps a tool handler with logging.
 func instrument(name string, h func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-        start := time.Now()
-        res, err := h(ctx, req)
-        duration := time.Since(start)
-        
-        // Log asynchronously
-        resultCount := 0
-        if res != nil {
-            resultCount = len(res.Content)
-        }
-        
-        // Convert arguments to map[string]any with type assertion
-        args := make(map[string]any)
-        if req.Params.Arguments != nil {
-            if argsMap, ok := req.Params.Arguments.(map[string]any); ok {
-                args = argsMap
-            }
-        }
-        
-        // We do this in a goroutine to not block the response
-        LogQueryAsync(name, args, resultCount, duration, "claude-client") // simplistic client info
-        
-        return res, err
-    }
+		start := time.Now()
+		res, err := h(ctx, req)
+		duration := time.Since(start)
+
+		// DuckDB audit log (existing)
+		resultCount := 0
+		if res != nil {
+			resultCount = len(res.Content)
+		}
+		args := make(map[string]any)
+		if req.Params.Arguments != nil {
+			if argsMap, ok := req.Params.Arguments.(map[string]any); ok {
+				args = argsMap
+			}
+		}
+		LogQueryAsync(name, args, resultCount, duration, "claude-client")
+
+		// Tool-level AI/observability: one log entry per invocation (success or failure)
+		logAISession(name, "", duration.Milliseconds(), err)
+
+		return res, err
+	}
 }
