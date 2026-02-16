@@ -409,8 +409,9 @@ IMPORTANT: When the user asks about "real-time", "current", "latest", "live", or
 Only use device_history for mobile bGeigie devices or when explicitly asked for historical survey data.
 
 UNIT CONVERSION REQUIREMENT:
-Always present radiation measurements in µSv/h (microsieverts per hour), not CPM (counts per minute).
-If data is provided in CPM, convert it using these detector-specific conversion factors:
+Always present radiation measurements in µSv/h (microsieverts per hour).
+If data is provided in CPM (counts per minute), you MUST state it as "CPM (counts per minute)" NOT "CPS (counts per second)".
+Convert CPM to µSv/h using these detector-specific conversion factors:
 
 Common Geiger-Müller tube conversion factors (CPM to µSv/h):
 - LND 7317 (Pancake tube): µSv/h = CPM / 334
