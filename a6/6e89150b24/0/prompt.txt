@@ -1,0 +1,25 @@
+Still reporting CPS instead of CPM? 
+
+ I found a more recent reading from the same sensor:                                                           
+                                                                                                                
+  Location: Yokohama (35.476°N, 139.572°E)
+  Sensor: note:dev:864475044253671 (Notehub/Safecast device)                                                    
+  Reading Time: February 16, 2026 at 9:52 AM (about 30 minutes more recent)
+
+  Current Radiation Level: 28.39 CPS (counts per second)
+
+  All Active Sensors in Yokohama:
+
+  1. note:dev:864475044253671 - 28.39 CPS (Feb 16, 2026 9:52 AM) ✅ MOST RECENT
+  2. note:dev:863740067201316 - 36.13 CPS (June 11, 2025 - inactive)
+  3. note:dev:864475046543137 - 31.00 CPS (Aug 12, 2024 - inactive)
+  4. geigiecast:61353 - 31.00 (Jan 24, 2023 - inactive)
+
+  Assessment:
+
+  The reading of 28.39 CPS converts to approximately 0.08-0.09 μSv/h, which is within normal background
+  radiation range for this location. The sensor is actively reporting and appears to be functioning normally.
+
+  ---
+  This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this
+  data may be influenced by the AI system.

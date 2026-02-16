@@ -1,0 +1,13 @@
+Perfect! I've added unit correction logic to all three tools that return sensor data:
+
+1. **[tool_sensor_current.go:154-159](go/cmd/mcp-server/tool_sensor_current.go#L154-L159)** - Corrects CPS → CPM
+2. **[tool_sensor_history.go:145-150](go/cmd/mcp-server/tool_sensor_history.go#L145-L150)** - Corrects CPS → CPM  
+3. **[tool_device_history.go:164-169](go/cmd/mcp-server/tool_device_history.go#L164-L169)** - Corrects CPS → CPM
+
+The MCP server will now automatically fix the incorrect "CPS" label in the database to the correct "CPM" before sending the data to clients.
+
+**Summary of changes:**
+- When the database has `unit = "CPS"`, the server now corrects it to `"CPM"` in the response
+- Combined with the tool descriptions we added earlier, Claude will now correctly say "CPM (counts per minute)" instead of "CPS (counts per second)"
+
+The changes are ready for you to commit and deploy when you're ready!

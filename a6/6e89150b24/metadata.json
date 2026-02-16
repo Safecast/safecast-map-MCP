@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "a66e89150b24",
+  "strategy": "auto-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "go/cmd/mcp-server/tool_device_history.go",
+    "go/cmd/mcp-server/tool_sensor_current.go",
+    "go/cmd/mcp-server/tool_sensor_history.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a6/6e89150b24/0/metadata.json",
+      "transcript": "/a6/6e89150b24/0/full.jsonl",
+      "context": "",
+      "content_hash": "/a6/6e89150b24/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 58,
+    "cache_creation_tokens": 9331,
+    "cache_read_tokens": 588518,
+    "output_tokens": 11,
+    "api_call_count": 7
+  }
+}
