@@ -1,0 +1,16 @@
+Perfect! I've now fixed the **actual MCP server code** that will affect Claude CLI and all other clients. I updated the tool descriptions for:
+
+1. [tool_sensor_current.go:11](go/cmd/mcp-server/tool_sensor_current.go#L11)
+2. [tool_sensor_history.go:12](go/cmd/mcp-server/tool_sensor_history.go#L12)  
+3. [tool_device_history.go:11](go/cmd/mcp-server/tool_device_history.go#L11)
+
+Each now explicitly states: **"CPM means 'counts per minute' (NOT counts per second)"**
+
+To deploy this fix, you'll need to:
+
+```bash
+cd /home/rob/Documents/Safecast/safecast-map-MCP/go
+go build ./cmd/mcp-server/
+```
+
+Then deploy the new binary to your VPS, or push the changes and let the GitHub Actions workflow deploy it automatically.

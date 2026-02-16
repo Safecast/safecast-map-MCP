@@ -1,0 +1,1 @@
+That was using Calude CLI in a terminal on the map server. As far as I know the code for the test forder is not on the MCP server. Is that correct?
