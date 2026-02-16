@@ -1,0 +1,8 @@
+I've fixed the issue! The problem was in the prompts in both test files ([claude_web.go](test/claude_web.go) and [webite entry.go](test/webite entry.go)). The AI was incorrectly interpreting CPM (counts per minute) data as CPS (counts per second).
+
+I've updated both files to explicitly state:
+- When data is provided in CPM, it **MUST** be stated as "CPM (counts per minute)" 
+- **NOT** "CPS (counts per second)"
+- Then convert CPM to µSv/h using the appropriate detector-specific conversion factors
+
+This ensures that when the radiation level is stored in CPM, it will be correctly labeled as CPM in the response, not mistakenly called CPS.

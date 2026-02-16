@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "4ac0cfcc224f",
+  "strategy": "auto-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "test/claude_web.go",
+    "test/webite entry.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/4a/c0cfcc224f/0/metadata.json",
+      "transcript": "/4a/c0cfcc224f/0/full.jsonl",
+      "context": "",
+      "content_hash": "/4a/c0cfcc224f/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 66,
+    "cache_creation_tokens": 29084,
+    "cache_read_tokens": 264774,
+    "output_tokens": 16,
+    "api_call_count": 8
+  }
+}

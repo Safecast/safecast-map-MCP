@@ -1,0 +1,26 @@
+There si a mistake in the reply of the MCP server it reports this:
+
+● Latest Radiation Reading from Yokohama                                                                        
+                                                                                                                
+  Location: Yokohama (35.476°N, 139.572°E)                                                                      
+  Sensor: note:dev:864475044253671 (Notehub device)
+  Reading Time: February 16, 2026 at 9:22 AM (just a few hours ago)                                             
+                                                                                                                
+  Radiation Level: 27.59 CPS (counts per second)
+                                                                                                                
+  This reading is measured in counts per second from an LND 7318C Geiger tube. Converting to more common units: 
+  - Approximately 0.08 μSv/h (microsieverts per hour)                                                           
+                                                                                                                
+  Context:
+
+  This radiation level is normal background radiation. For reference:
+  - Typical background radiation: 0.05-0.30 μSv/h
+  - The reading in Yokohama is well within the safe range
+  - This is similar to natural background radiation found in most locations worldwide
+
+  ---
+  This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this
+  data may be influenced by the AI system.
+
+
+The radiation level was saved in CPM , but repoeted in CPS. Can you correct that ?
