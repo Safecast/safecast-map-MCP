@@ -61,21 +61,32 @@ jobs:
             systemctl restart safecast-mcp"
 
           # Wait for server to start
-          sleep 3
+          sleep 10
 
       - name: Health check
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ci","version":"1.0"}}}' \
-            "https://$VPS_HOST/mcp-http" \
-            --max-time 10)
-          if [ "$RESPONSE" = "200" ]; then
-            echo "Health check passed (HTTP 200)"
-          else
+          MAX_ATTEMPTS=5
+          ATTEMPT=1
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS..."
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ci","version":"1.0"}}}' \
+              "https://$VPS_HOST/mcp-http" \
+              --max-time 10)
+            if [ "$RESPONSE" = "200" ]; then
+              echo "Health check passed (HTTP 200)"
+              exit 0
+            fi
             echo "Health check failed (HTTP $RESPONSE)"
-            exit 1
-          fi
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "Waiting 5 seconds before retry..."
+              sleep 5
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+          echo "Health check failed after $MAX_ATTEMPTS attempts"
+          exit 1
