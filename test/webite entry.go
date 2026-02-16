@@ -406,7 +406,22 @@ HISTORICAL DATA TOOLS (use for mobile survey/bGeigie data):
 
 IMPORTANT: When the user asks about "real-time", "current", "latest", "live", or mentions fixed sensor types (Pointcast, Solarcast, bGeigieZen), you MUST use sensor_current or sensor_history, NOT device_history.
 
-Only use device_history for mobile bGeigie devices or when explicitly asked for historical survey data.`
+Only use device_history for mobile bGeigie devices or when explicitly asked for historical survey data.
+
+UNIT CONVERSION REQUIREMENT:
+Always present radiation measurements in µSv/h (microsieverts per hour), not CPM (counts per minute).
+If data is provided in CPM, convert it using these detector-specific conversion factors:
+
+Common Geiger-Müller tube conversion factors (CPM to µSv/h):
+- LND 7317 (Pancake tube): µSv/h = CPM / 334
+- SBM-20 (Russian tube): µSv/h = CPM / 175.43
+- SBM-19: µSv/h = CPM / 108.3
+- J305 (bGeigie standard): µSv/h = CPM / 100
+- LND 78017: µSv/h = CPM / 294
+- SI-22G: µSv/h = CPM / 108
+- SI-3BG: µSv/h = CPM / 631
+
+If the detector type is known, use its specific conversion factor. If unknown, note that the value is in CPM and conversion requires knowing the detector model.`
 
 	messages := []Message{
 		{Role: "system", Content: systemPrompt},

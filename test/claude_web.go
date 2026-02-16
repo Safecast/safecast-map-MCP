@@ -60,6 +60,21 @@ REAL-TIME DATA: When asked about "real-time", "current", "latest", or "live" sen
 
 HISTORICAL DATA: Only use device_history for mobile bGeigie survey devices or historical import data.
 
+UNIT CONVERSION REQUIREMENT:
+Always present radiation measurements in µSv/h (microsieverts per hour), not CPM (counts per minute).
+If data is provided in CPM, convert it using these detector-specific conversion factors:
+
+Common Geiger-Müller tube conversion factors (CPM to µSv/h):
+- LND 7317 (Pancake tube): µSv/h = CPM / 334
+- SBM-20 (Russian tube): µSv/h = CPM / 175.43
+- SBM-19: µSv/h = CPM / 108.3
+- J305 (bGeigie standard): µSv/h = CPM / 100
+- LND 78017: µSv/h = CPM / 294
+- SI-22G: µSv/h = CPM / 108
+- SI-3BG: µSv/h = CPM / 631
+
+If the detector type is known, use its specific conversion factor. If unknown, note that the value is in CPM and conversion requires knowing the detector model.
+
 User question: %s`, msg)
 
 	// Call claude CLI with the enhanced prompt
