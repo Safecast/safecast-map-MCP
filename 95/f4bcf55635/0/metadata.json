@@ -1,0 +1,24 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "95f4bcf55635",
+  "session_id": "960e1199-4c77-4e97-9fa1-33fb9498a0a9",
+  "strategy": "auto-commit",
+  "created_at": "2026-02-16T05:45:26.415986584Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "test/claude_web.go",
+    "test/webite entry.go"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "1a55fb60-8388-46e3-9985-f00cd3ffc33c",
+  "checkpoint_transcript_start": 56,
+  "transcript_lines_at_start": 56,
+  "token_usage": {
+    "input_tokens": 38,
+    "cache_creation_tokens": 6716,
+    "cache_read_tokens": 234394,
+    "output_tokens": 7,
+    "api_call_count": 4
+  }
+}
