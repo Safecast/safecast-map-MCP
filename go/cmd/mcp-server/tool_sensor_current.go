@@ -152,12 +152,18 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 
 	readings := make([]map[string]any, len(rows))
 	for i, r := range rows {
+		// Fix incorrect unit: Geiger counters report in CPM (counts per minute), not CPS
+		unit := r["unit"]
+		if unitStr, ok := unit.(string); ok && unitStr == "CPS" {
+			unit = "CPM"
+		}
+
 		readings[i] = map[string]any{
 			"id":          r["id"],
 			"device_id":   r["device_id"],
 			"device_name": r["device_name"],
 			"value":       r["value"],
-			"unit":        r["unit"],
+			"unit":        unit,
 			"captured_at": r["captured_at"],
 			"location": map[string]any{
 				"latitude":  r["latitude"],

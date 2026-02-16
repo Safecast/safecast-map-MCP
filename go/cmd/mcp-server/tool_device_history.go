@@ -162,10 +162,16 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 	
 	// Process realtime results
 	for _, r := range realtimeRows {
+		// Fix incorrect unit: Geiger counters report in CPM (counts per minute), not CPS
+		unit := r["unit"]
+		if unitStr, ok := unit.(string); ok && unitStr == "CPS" {
+			unit = "CPM"
+		}
+
 		measurement := map[string]any{
 			"id":    r["id"],
 			"value": r["value"],
-			"unit":  r["unit"],
+			"unit":  unit,
 			"captured_at": r["captured_at"],
 			"location": map[string]any{
 				"latitude":  r["latitude"],
