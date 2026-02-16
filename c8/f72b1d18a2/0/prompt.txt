@@ -1,0 +1,1 @@
+can you modify the code in the test folder an AI bot search the MCP server for data and real time data is requested, automatically realtime table is used for that query. Not the device histrory?
