@@ -51,11 +51,22 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("User query: %s", msg)
 
-	// Call claude CLI with the user's prompt
+	// Construct an enhanced prompt with tool usage guidelines
+	enhancedPrompt := fmt.Sprintf(`When answering this question, follow these Safecast tool selection guidelines:
+
+REAL-TIME DATA: When asked about "real-time", "current", "latest", or "live" sensor data, or when querying fixed sensors (Pointcast, Solarcast, bGeigieZen), you MUST use:
+- sensor_current (for latest readings)
+- sensor_history (for time-series data)
+
+HISTORICAL DATA: Only use device_history for mobile bGeigie survey devices or historical import data.
+
+User question: %s`, msg)
+
+	// Call claude CLI with the enhanced prompt
 	// -p sends a single prompt (non-interactive)
 	// --allowedTools allows MCP tools without interactive permission prompts
 	cmd := exec.CommandContext(r.Context(), "claude",
-		"-p", msg,
+		"-p", enhancedPrompt,
 		"--output-format", "text",
 		"--allowedTools", "mcp__claude_ai_Safecast_MCP__*",
 	)

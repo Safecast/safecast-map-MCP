@@ -392,8 +392,24 @@ func (a *Agent) Init(ctx context.Context) error {
 }
 
 func (a *Agent) Run(ctx context.Context, userMessage string) (string, error) {
+	systemPrompt := `You are a helpful assistant with access to Safecast radiation measurement tools. Follow these tool selection guidelines:
+
+REAL-TIME DATA TOOLS (use for live/current sensor data):
+- sensor_current: Get the latest reading from real-time fixed sensors (Pointcast, Solarcast, etc.)
+- sensor_history: Get time-series data from real-time fixed sensors over a date range
+
+HISTORICAL DATA TOOLS (use for mobile survey/bGeigie data):
+- device_history: Get historical measurements from mobile devices (bGeigie imports)
+- query_radiation: Search for measurements by location
+- search_area: Find measurements in a geographic bounding box
+- list_tracks, get_track: Browse mobile survey drives
+
+IMPORTANT: When the user asks about "real-time", "current", "latest", "live", or mentions fixed sensor types (Pointcast, Solarcast, bGeigieZen), you MUST use sensor_current or sensor_history, NOT device_history.
+
+Only use device_history for mobile bGeigie devices or when explicitly asked for historical survey data.`
+
 	messages := []Message{
-		{Role: "system", Content: "You are a helpful assistant. Use the available tools to answer questions."},
+		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userMessage},
 	}
 
