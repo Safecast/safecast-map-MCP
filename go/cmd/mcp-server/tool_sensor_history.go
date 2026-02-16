@@ -9,7 +9,7 @@ import (
 )
 
 var sensorHistoryToolDef = mcp.NewTool("sensor_history",
-	mcp.WithDescription("Pull time-series data from a fixed sensor over a date range. The 'unit' field indicates the measurement unit - CPM means 'counts per minute' (NOT counts per second). Always present radiation values in µSv/h by converting from CPM using detector-specific factors. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
+	mcp.WithDescription("Pull time-series data from REAL-TIME fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) over a date range. Use this tool for historical time-series from fixed sensors. NOT for mobile bGeigie devices - use device_history for those. The 'unit' field indicates the measurement unit - CPM means 'counts per minute' (NOT counts per second). Always present radiation values in µSv/h by converting from CPM using detector-specific factors. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithString("device_id",
 		mcp.Description("Device identifier to get historical data from"),
 		mcp.Required(),

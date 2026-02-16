@@ -8,7 +8,7 @@ import (
 )
 
 var sensorCurrentToolDef = mcp.NewTool("sensor_current",
-	mcp.WithDescription("Get the latest reading(s) from a specific sensor or from all sensors in a geographic area. The 'unit' field indicates the measurement unit - CPM means 'counts per minute' (NOT counts per second). Always present radiation values in µSv/h by converting from CPM using detector-specific factors. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
+	mcp.WithDescription("Get the latest reading(s) from REAL-TIME fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.). Use this tool when users ask about 'current', 'latest', 'live', or 'real-time' sensor data. NOT for mobile bGeigie devices - use device_history for those. The 'unit' field indicates the measurement unit - CPM means 'counts per minute' (NOT counts per second). Always present radiation values in µSv/h by converting from CPM using detector-specific factors. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithString("device_id",
 		mcp.Description("Specific device ID to get latest reading from"),
 	),
