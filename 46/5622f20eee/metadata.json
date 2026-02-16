@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "465622f20eee",
+  "strategy": "auto-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "test/claude_web.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/46/5622f20eee/0/metadata.json",
+      "transcript": "/46/5622f20eee/0/full.jsonl",
+      "context": "",
+      "content_hash": "/46/5622f20eee/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 7,
+    "cache_creation_tokens": 5662,
+    "cache_read_tokens": 264246,
+    "output_tokens": 57,
+    "api_call_count": 5
+  }
+}

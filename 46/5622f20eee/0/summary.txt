@@ -1,0 +1,8 @@
+Server is running with the updated UI. Open `http://localhost:8080` — you should now see:
+
+- **Markdown rendering** via `marked.js` — tables, headers, bold, code blocks, lists all render properly
+- **Styled chat bubbles** — blue left-border for user messages, green for Claude
+- **Better table styling** — bordered cells with header backgrounds
+- **Code blocks** — dark theme with syntax highlighting colors
+- **Pulsing "Thinking..." indicator** while waiting for Claude
+- **Cleaner layout** — rounded corners, proper spacing, focus states on input
