@@ -98,9 +98,12 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 			s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
 			s.source_format, s.filename, s.created_at,
 			m.doserate, m.lat, m.lon, to_timestamp(m.date) AS captured_at,
-			m.trackid AS track_id
+			m.trackid AS track_id,
+			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
 		FROM spectra s
 		JOIN markers m ON m.id = s.marker_id
+		LEFT JOIN uploads u ON u.track_id = m.trackid
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
 		WHERE 1=1`
 
 	countBase := `SELECT count(*) AS total
@@ -181,7 +184,7 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 
 	spectra := make([]map[string]any, len(rows))
 	for i, r := range rows {
-		spectra[i] = map[string]any{
+		spec := map[string]any{
 			"spectrum_id":    r["id"],
 			"marker_id":     r["marker_id"],
 			"filename":      r["filename"],
@@ -204,6 +207,16 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 				"track_id":    r["track_id"],
 			},
 		}
+
+		// Add uploader information if available
+		if uploaderUsername, ok := r["uploader_username"]; ok && uploaderUsername != nil {
+			spec["uploader"] = map[string]any{
+				"username": uploaderUsername,
+				"email":    r["uploader_email"],
+			}
+		}
+
+		spectra[i] = spec
 	}
 
 	filters := map[string]any{}

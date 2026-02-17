@@ -37,9 +37,12 @@ func getSpectrumDB(ctx context.Context, markerID int) (*mcp.CallToolResult, erro
 		SELECT s.id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 			s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
 			s.source_format, s.filename, s.created_at,
-			m.doserate, m.lat, m.lon, to_timestamp(m.date) AS captured_at
+			m.doserate, m.lat, m.lon, to_timestamp(m.date) AS captured_at, m.trackid,
+			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
 		FROM spectra s
 		JOIN markers m ON m.id = s.marker_id
+		LEFT JOIN uploads u ON u.track_id = m.trackid
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
 		WHERE s.marker_id = $1`, markerID)
 
 	if err != nil {
@@ -84,8 +87,17 @@ func getSpectrumDB(ctx context.Context, markerID int) (*mcp.CallToolResult, erro
 			"latitude":    row["lat"],
 			"longitude":   row["lon"],
 			"captured_at": row["captured_at"],
+			"track_id":    row["trackid"],
 		},
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
+	}
+
+	// Add uploader information if available
+	if uploaderUsername, ok := row["uploader_username"]; ok && uploaderUsername != nil {
+		result["uploader"] = map[string]any{
+			"username": uploaderUsername,
+			"email":    row["uploader_email"],
+		}
 	}
 
 	return jsonResult(result)

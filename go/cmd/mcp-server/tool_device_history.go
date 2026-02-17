@@ -55,13 +55,16 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 	// Query both markers table and realtime_measurements table
 	// First, try markers table (bGeigie imports)
 	markersQuery := `
-		SELECT id, doserate AS value, 'µSv/h' AS unit,
-			to_timestamp(date) AS captured_at,
-			lat AS latitude, lon AS longitude,
-			altitude AS height, detector, trackid::text AS track_id
-		FROM markers
-		WHERE device_id = $1 AND date >= $2 AND date <= $3
-		ORDER BY date DESC
+		SELECT m.id, m.doserate AS value, 'µSv/h' AS unit,
+			to_timestamp(m.date) AS captured_at,
+			m.lat AS latitude, m.lon AS longitude,
+			m.altitude AS height, m.detector, m.trackid::text AS track_id,
+			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
+		FROM markers m
+		LEFT JOIN uploads u ON u.track_id = m.trackid
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
+		WHERE m.device_id = $1 AND m.date >= $2 AND m.date <= $3
+		ORDER BY m.date DESC
 		LIMIT $4`
 
 	markersRows, err := queryRows(ctx, markersQuery, deviceID, startDate.Unix(), now.Unix(), limit)
@@ -157,6 +160,15 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 		if r["track_id"] != nil {
 			measurement["track_id"] = r["track_id"]
 		}
+
+		// Add uploader information if available
+		if uploaderUsername, ok := r["uploader_username"]; ok && uploaderUsername != nil && uploaderUsername != "" {
+			measurement["uploader"] = map[string]any{
+				"username": uploaderUsername,
+				"email":    r["uploader_email"],
+			}
+		}
+
 		allMeasurements = append(allMeasurements, measurement)
 	}
 	

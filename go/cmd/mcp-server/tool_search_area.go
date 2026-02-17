@@ -79,14 +79,17 @@ func handleSearchArea(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, limit int) (*mcp.CallToolResult, error) {
 	query := `
-		SELECT id, doserate AS value, 'µSv/h' AS unit,
-			to_timestamp(date) AS captured_at,
-			lat AS latitude, lon AS longitude,
-			device_id, altitude AS height, detector,
-			trackid, has_spectrum
-		FROM markers
-		WHERE geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)
-		ORDER BY date DESC
+		SELECT m.id, m.doserate AS value, 'µSv/h' AS unit,
+			to_timestamp(m.date) AS captured_at,
+			m.lat AS latitude, m.lon AS longitude,
+			m.device_id, m.altitude AS height, m.detector,
+			m.trackid, m.has_spectrum,
+			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
+		FROM markers m
+		LEFT JOIN uploads u ON u.track_id = m.trackid
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
+		WHERE m.geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)
+		ORDER BY m.date DESC
 		LIMIT $5`
 
 	rows, err := queryRows(ctx, query, minLon, minLat, maxLon, maxLat, limit)
@@ -96,8 +99,8 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 
 	countRow, _ := queryRow(ctx, `
 		SELECT count(*) AS total
-		FROM markers
-		WHERE geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)`,
+		FROM markers m
+		WHERE m.geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)`,
 		minLon, minLat, maxLon, maxLat)
 	total := 0
 	if countRow != nil {
@@ -113,7 +116,7 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 
 	measurements := make([]map[string]any, len(rows))
 	for i, r := range rows {
-		measurements[i] = map[string]any{
+		measurement := map[string]any{
 			"id":    r["id"],
 			"value": r["value"],
 			"unit":  r["unit"],
@@ -128,6 +131,16 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 			"track_id":    r["trackid"],
 			"has_spectrum": r["has_spectrum"],
 		}
+
+		// Add uploader information if available
+		if uploaderUsername, ok := r["uploader_username"]; ok && uploaderUsername != nil && uploaderUsername != "" {
+			measurement["uploader"] = map[string]any{
+				"username": uploaderUsername,
+				"email":    r["uploader_email"],
+			}
+		}
+
+		measurements[i] = measurement
 	}
 
 	result := map[string]any{
