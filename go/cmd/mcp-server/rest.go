@@ -234,7 +234,11 @@ const swaggerThemeCSS = `
 }
 .swagger-ui .topbar-wrapper img,
 .swagger-ui .topbar-wrapper a,
-.swagger-ui .topbar-wrapper .link {
+.swagger-ui .topbar-wrapper .link,
+.swagger-ui .topbar-wrapper svg,
+.swagger-ui .topbar-wrapper .svg-assets,
+.swagger-ui svg-assets,
+.svg-assets {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -244,21 +248,13 @@ const swaggerThemeCSS = `
   left: -9999px !important;
   max-height: 0 !important;
 }
-/* Hide ALL children of topbar-wrapper except download-url-wrapper */
-.swagger-ui .topbar-wrapper > *:not(.download-url-wrapper) {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  position: absolute !important;
-  left: -9999px !important;
-}
-/* Cover entire left side with dark background immediately */
+/* Cover logo area with dark background immediately */
 .swagger-ui .topbar-wrapper::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
-  width: 50%;
+  width: 250px;
   height: 100%;
   background: #424242;
   z-index: 1;
