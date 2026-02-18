@@ -228,9 +228,7 @@ const swaggerThemeCSS = `
 
 /* Hide Swagger logo and collapse the space */
 .swagger-ui .topbar-wrapper {
-  padding-left: 0 !important;
-  overflow: hidden !important;
-  max-width: 100% !important;
+  padding-left: 20px !important;
 }
 .swagger-ui .topbar-wrapper img,
 .swagger-ui .topbar-wrapper a,
@@ -247,11 +245,6 @@ const swaggerThemeCSS = `
   position: absolute !important;
   left: -9999px !important;
   max-height: 0 !important;
-}
-/* Move explore section to the left */
-.swagger-ui .topbar-wrapper .download-url-wrapper {
-  margin-left: 0 !important;
-  padding-left: 20px !important;
 }
 /* Hide the info link that shows /docs/doc.json */
 .swagger-ui .info .link,
