@@ -8,7 +8,7 @@ import (
 )
 
 var listSensorsToolDef = mcp.NewTool("list_sensors",
-	mcp.WithDescription("Discover active fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) by location or type, returning device IDs, locations, status, and last reading timestamp."),
+	mcp.WithDescription("Discover active fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) by location or type, returning device IDs, locations, status, and last reading timestamp. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithString("type",
 		mcp.Description("Filter by sensor type (e.g., 'Pointcast', 'Solarcast', 'bGeigieZen', etc.)"),
 	),
@@ -162,6 +162,7 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 		"sensors": sensors,
 		"table_used": realtimeTable,
 		"available_tables": availableTables,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

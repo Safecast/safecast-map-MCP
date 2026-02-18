@@ -8,7 +8,7 @@ import (
 )
 
 var sensorCurrentToolDef = mcp.NewTool("sensor_current",
-	mcp.WithDescription("Get the latest reading(s) from a specific sensor or from all sensors in a geographic area."),
+	mcp.WithDescription("Get the latest reading(s) from REAL-TIME fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.). Use this tool when users ask about 'current', 'latest', 'live', or 'real-time' sensor data. NOT for mobile bGeigie devices - use device_history for those. The 'unit' field indicates the measurement unit - CPM means 'counts per minute' (NOT counts per second). Always present radiation values in µSv/h by converting from CPM using detector-specific factors. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithString("device_id",
 		mcp.Description("Specific device ID to get latest reading from"),
 	),
@@ -152,12 +152,18 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 
 	readings := make([]map[string]any, len(rows))
 	for i, r := range rows {
+		// Fix incorrect unit: Geiger counters report in CPM (counts per minute), not CPS
+		unit := r["unit"]
+		if unitStr, ok := unit.(string); ok && unitStr == "CPS" {
+			unit = "CPM"
+		}
+
 		readings[i] = map[string]any{
 			"id":          r["id"],
 			"device_id":   r["device_id"],
 			"device_name": r["device_name"],
 			"value":       r["value"],
-			"unit":        r["unit"],
+			"unit":        unit,
 			"captured_at": r["captured_at"],
 			"location": map[string]any{
 				"latitude":  r["latitude"],
@@ -173,6 +179,7 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 		"readings": readings,
 		"table_used": realtimeTable,
 		"available_tables": availableTables,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

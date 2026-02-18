@@ -1,4 +1,4 @@
-# Safecast MCP Server connecting to simplemap.safecast.org
+# Safecast MCP Server connecting to simplemap.safecast.org V0.9
 
 An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 15 tools for querying both real-time sensor readings and historical radiation measurements, browsing sensor tracks, spectroscopy data, analytics, and educational reference data.
 
@@ -9,6 +9,7 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 - **Dual transport**: SSE and Streamable HTTP (works with Claude.ai)
 - **PostgreSQL + PostGIS** for fast spatial queries (with REST API fallback)
 - **DuckDB analytics** for usage statistics and aggregate queries
+- **Structured runtime logging** for monitoring tool usage and performance
 - **Read-only** access to public Safecast data
 
 ## Tools Overview
@@ -304,6 +305,18 @@ Get aggregate radiation statistics from the Safecast database grouped by time in
 
 Get usage statistics for all MCP tools including call counts, average duration, and max duration. Powered by DuckDB local logs. No parameters required.
 
+### Structured Runtime Logging
+
+The server now includes comprehensive structured logging for monitoring AI tool usage and performance. The logging system:
+
+- Records session IDs, timestamps, tool names, query durations, and error information
+- Sanitizes query content to protect sensitive data while preserving query structure
+- Provides asynchronous logging that doesn't block tool execution
+- Tracks commit hashes for deployment correlation
+- Optionally exports logs to external systems when configured
+
+This enables better observability into how tools are being used and helps identify performance bottlenecks.
+
 ---
 
 ### db_info
@@ -316,6 +329,46 @@ Diagnostic tool that returns database connection info, PostgreSQL version, repli
 
 Health check. Returns `"pong"`. No parameters required.
 
+## REST API
+
+The server also exposes a standard REST API on the same port as the MCP endpoints. All endpoints return JSON and are documented interactively via Swagger UI.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/radiation` | Find measurements near lat/lon |
+| GET | `/api/area` | Find measurements in a bounding box |
+| GET | `/api/tracks` | List bGeigie measurement tracks |
+| GET | `/api/track/{id}` | Get measurements from a track |
+| GET | `/api/device/{id}/history` | Device history (bGeigie + fixed sensors) |
+| GET | `/api/sensors` | List active fixed sensors |
+| GET | `/api/sensor/{id}/current` | Latest reading from a sensor |
+| GET | `/api/sensor/{id}/history` | Time-series from a sensor |
+| GET | `/api/spectra` | Browse gamma spectroscopy records |
+| GET | `/api/spectrum/{marker_id}` | Full spectroscopy channel data |
+| GET | `/api/stats` | Aggregate radiation statistics |
+| GET | `/api/info/{topic}` | Reference information (units, safety levels, etc.) |
+| GET | `/docs/` | Interactive Swagger UI |
+| GET | `/docs/doc.json` | Raw OpenAPI spec |
+
+**Quick example:**
+```bash
+curl "http://localhost:3333/api/radiation?lat=37.42&lon=141.03&radius_m=5000&limit=10"
+```
+
+### Updating API Documentation
+
+The Swagger docs are generated from `// @Summary`, `// @Param`, and `// @Router` annotations in the `rest_*.go` files. After changing any annotation, regenerate with:
+
+```bash
+# Install swag CLI (one-time)
+go install github.com/swaggo/swag/cmd/swag@latest
+
+# Regenerate from go/ directory
+cd go && swag init -g cmd/mcp-server/rest.go --dir cmd/mcp-server --output cmd/mcp-server/docs
+```
+
+The generated `docs/` folder is committed to the repo — the deployed binary does not need the swag CLI.
+
 ## Quick Start
 
 ```bash
@@ -324,7 +377,9 @@ go build -o safecast-mcp ./cmd/mcp-server/
 ./safecast-mcp
 ```
 
-The server listens on port 3333 by default and provides access to both historical bGeigie data and real-time sensor readings.
+The server listens on port 3333 by default. It serves both MCP protocol endpoints and the REST API.
+
+Open `http://localhost:3333/docs/` for the interactive Swagger UI.
 
 ### Environment Variables
 
@@ -338,7 +393,11 @@ The server listens on port 3333 by default and provides access to both historica
 - **SSE**: `/mcp/sse` (GET) and `/mcp/message` (POST)
 - **Streamable HTTP**: `/mcp-http` (POST)
 
-## Connecting to Claude.ai
+## Connecting Claude to the MCP
+
+### Using the Deployed Server
+
+To connect Claude to the deployed Safecast MCP server:
 
 1. Open [claude.ai](https://claude.ai) in your browser
 2. Go to **Settings** (bottom-left) > **Integrations**
@@ -349,6 +408,34 @@ The server listens on port 3333 by default and provides access to both historica
    ```
 5. Click **Save** — the Safecast tools will now be available in your conversations
 
+### Running Locally
+
+To connect Claude to a locally running MCP server:
+
+1. Start your local MCP server:
+   ```bash
+   cd go
+   go run ./cmd/mcp-server/
+   ```
+   
+2. The server will start on `http://localhost:3333` by default
+
+3. Expose your local server to the internet using a tool like ngrok:
+   ```bash
+   ngrok http 3333
+   ```
+   
+4. Take the HTTPS URL provided by ngrok (e.g., `https://abc123.ngrok.io`) and append `/mcp-http` to form the endpoint URL (e.g., `https://abc123.ngrok.io/mcp-http`)
+
+5. Follow steps 2-5 from the "Using the Deployed Server" section above, using your ngrok URL instead
+
+### Configuration Notes
+
+- The MCP server supports both SSE and Streamable HTTP transports
+- The Streamable HTTP endpoint (`/mcp-http`) is recommended for Claude integration
+- If using a custom domain or different port, adjust the endpoint URL accordingly
+- Make sure your server is accessible from the internet for Claude to connect
+
 ## Architecture
 
 ```
@@ -357,13 +444,29 @@ Claude / AI client
     v
 MCP Server (Go, mcp-go)
     |
-    +---> PostgreSQL + PostGIS (primary, if DATABASE_URL set)
+    +---> Tool Execution with Structured Logging
           |
-          +---> markers table (historical bGeigie data)
+          +---> PostgreSQL + PostGIS (primary, if DATABASE_URL set)
+          |     |
+          |     +---> markers table (historical bGeigie data)
+          |     |
+          |     +---> realtime_measurements table (real-time sensor data)
+          |     |
+          |     +---> spectra table (spectroscopy data)
           |
-          +---> realtime_measurements table (real-time sensor data)
+          +---> DuckDB Analytics Engine
+          |     |
+          |     +---> Local usage statistics
           |
-          +---> spectra table (spectroscopy data)
+          +---> Structured Logging System
+                |
+                +---> Session tracking
+                |
+                +---> Performance metrics
+                |
+                +---> Error logging
+                |
+                +---> Optional external export
     |
     +---> simplemap.safecast.org REST API (fallback)
 ```
@@ -375,6 +478,7 @@ The server uses [`mcp-go`](https://github.com/mark3labs/mcp-go) for MCP protocol
 ```
 go/cmd/mcp-server/
   main.go              # Server setup, tool registration, dual transport
+  ai_logging.go        # Structured AI session logging and metrics
   api_client.go        # Safecast REST API client
   db_client.go         # PostgreSQL connection pool (pgx)
   duckdb_client.go     # DuckDB analytics engine
@@ -460,7 +564,40 @@ Contributions welcome. If changing a tool's interface, please open an issue firs
 
 MIT
 
+## Technical Implementation Details
+
+### CORS Processing
+The application handles cross-origin resource sharing through standard HTTP headers managed by the underlying `mcp-go` library.
+
+### Logarithmic Scaling
+Used for mapping radiation values to visual properties like marker opacity and color intensity for better visualization of wide-ranging values.
+
+### Timestamp Conversion
+The application converts Unix timestamps from the API to human-readable formats for display in map popups.
+
+### Responsive Design
+The application adapts to various screen sizes using responsive CSS techniques.
+
+## API Integration Details
+
+- **Endpoints Used**: 
+  - `/mcp/sse` (SSE transport)
+  - `/mcp/message` (message transport) 
+  - `/mcp-http` (streamable HTTP transport)
+- **Data Types**: JSON responses containing radiation measurements, sensor information, and spectroscopy data
+- **Request Methods**: Both GET (for SSE) and POST (for message passing) are supported
+
+## Browser Compatibility Requirements
+
+- HTML5/CSS3/ES5+ compatible browsers
+- WebSocket support for SSE communication
+- Modern JavaScript engine for processing MCP protocol messages
+
+## Deployment Notes
+
+- The application **must** be served via HTTP(S) server - direct file opening in browsers will not work due to CORS restrictions and API communication requirements.
+- Requires a backend server to handle MCP protocol communication with AI clients like Claude.
+
 <a href="https://www.paypal.com/ncp/payment/MAXS4ZUSGPDD4">
   <img src="https://safecast.org/wp-content/uploads/2024/08/Donation-PayPal-1.png" border="0" alt="Donate with PayPal" />
 </a>
-

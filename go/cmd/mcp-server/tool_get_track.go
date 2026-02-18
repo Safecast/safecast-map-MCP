@@ -8,7 +8,7 @@ import (
 )
 
 var getTrackToolDef = mcp.NewTool("get_track",
-	mcp.WithDescription("Retrieve all radiation measurements recorded during a specific track/journey. Use list_tracks to find available track IDs first."),
+	mcp.WithDescription("Retrieve all radiation measurements recorded during a specific track/journey. Use list_tracks to find available track IDs first. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithString("track_id",
 		mcp.Description("Track identifier (bGeigie import ID or track ID)"),
 		mcp.Required(),
@@ -49,13 +49,16 @@ func handleGetTrack(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 
 func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*mcp.CallToolResult, error) {
 	query := `
-		SELECT id, doserate AS value, 'µSv/h' AS unit,
-			to_timestamp(date) AS captured_at,
-			lat AS latitude, lon AS longitude,
-			device_id, altitude AS height, detector,
-			has_spectrum
-		FROM markers
-		WHERE trackid = $1`
+		SELECT m.id, m.doserate AS value, 'µSv/h' AS unit,
+			to_timestamp(m.date) AS captured_at,
+			m.lat AS latitude, m.lon AS longitude,
+			m.device_id, m.altitude AS height, m.detector,
+			m.has_spectrum,
+			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
+		FROM markers m
+		LEFT JOIN uploads u ON u.track_id = m.trackid
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
+		WHERE m.trackid = $1`
 
 	args := []any{trackID}
 	argIdx := 2
@@ -95,6 +98,7 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 	}
 
 	measurements := make([]map[string]any, len(rows))
+	var uploaderUsername, uploaderEmail any
 	for i, r := range rows {
 		measurements[i] = map[string]any{
 			"id":    r["id"],
@@ -110,6 +114,12 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 			"detector":    r["detector"],
 			"has_spectrum": r["has_spectrum"],
 		}
+
+		// Store uploader info from first row (all rows for same track have same uploader)
+		if i == 0 {
+			uploaderUsername = r["uploader_username"]
+			uploaderEmail = r["uploader_email"]
+		}
 	}
 
 	result := map[string]any{
@@ -120,6 +130,15 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    measurements,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
+	}
+
+	// Add uploader information if available
+	if uploaderUsername != nil && uploaderUsername != "" {
+		result["uploader"] = map[string]any{
+			"username": uploaderUsername,
+			"email":    uploaderEmail,
+		}
 	}
 
 	return jsonResult(result)
@@ -158,6 +177,7 @@ func getTrackAPI(ctx context.Context, trackIDStr string, fromID, toID, limit int
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    normalized,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

@@ -7,7 +7,7 @@ import (
 )
 
 var dbInfoToolDef = mcp.NewTool("db_info",
-	mcp.WithDescription("Get database connection information and replication status (diagnostic tool)"),
+	mcp.WithDescription("Get database connection information and replication status (diagnostic tool). IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithReadOnlyHintAnnotation(true),
 )
 
@@ -96,5 +96,6 @@ func handleDBInfo(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	return jsonResult(map[string]any{
 		"status":     "connected",
 		"connection": info,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	})
 }

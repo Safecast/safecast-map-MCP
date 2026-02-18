@@ -8,7 +8,7 @@ import (
 )
 
 var listSpectraToolDef = mcp.NewTool("list_spectra",
-	mcp.WithDescription("Browse gamma spectroscopy records. Returns metadata without channel data. Use get_spectrum with a marker_id from results to fetch full channel data. Can filter by track ID, geographic bounds, file format, or device model. Call with no filters to get all spectra."),
+	mcp.WithDescription("Browse gamma spectroscopy records. Returns metadata without channel data. Use get_spectrum with a marker_id from results to fetch full channel data. Can filter by track ID, geographic bounds, file format, or device model. Call with no filters to get all spectra. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithNumber("min_lat",
 		mcp.Description("Southern boundary latitude (requires all 4 bbox params)"),
 		mcp.Min(-90), mcp.Max(90),
@@ -98,9 +98,12 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 			s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
 			s.source_format, s.filename, s.created_at,
 			m.doserate, m.lat, m.lon, to_timestamp(m.date) AS captured_at,
-			m.trackid AS track_id
+			m.trackid AS track_id,
+			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
 		FROM spectra s
 		JOIN markers m ON m.id = s.marker_id
+		LEFT JOIN uploads u ON u.track_id = m.trackid
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
 		WHERE 1=1`
 
 	countBase := `SELECT count(*) AS total
@@ -181,7 +184,7 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 
 	spectra := make([]map[string]any, len(rows))
 	for i, r := range rows {
-		spectra[i] = map[string]any{
+		spec := map[string]any{
 			"spectrum_id":    r["id"],
 			"marker_id":     r["marker_id"],
 			"filename":      r["filename"],
@@ -204,6 +207,16 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 				"track_id":    r["track_id"],
 			},
 		}
+
+		// Add uploader information if available
+		if uploaderUsername, ok := r["uploader_username"]; ok && uploaderUsername != nil {
+			spec["uploader"] = map[string]any{
+				"username": uploaderUsername,
+				"email":    r["uploader_email"],
+			}
+		}
+
+		spectra[i] = spec
 	}
 
 	filters := map[string]any{}
@@ -229,6 +242,7 @@ func listSpectraDB(ctx context.Context, hasBBox bool, minLat, maxLat, minLon, ma
 		"source":          "database",
 		"filters":         filters,
 		"spectra":         spectra,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

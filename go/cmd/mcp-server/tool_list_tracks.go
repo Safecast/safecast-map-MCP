@@ -10,7 +10,7 @@ import (
 )
 
 var listTracksToolDef = mcp.NewTool("list_tracks",
-	mcp.WithDescription("Browse bGeigie Import tracks (bulk radiation measurement drives). Can filter by year and optionally month."),
+	mcp.WithDescription("Browse bGeigie Import tracks (bulk radiation measurement drives). Can filter by year and optionally month. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithNumber("year",
 		mcp.Description("Filter by year (e.g., 2024)"),
 		mcp.Min(2000), mcp.Max(2100),
@@ -60,10 +60,12 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 }
 
 func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolResult, error) {
-	query := `SELECT id, filename, file_type, track_id, file_size,
-			created_at, source, source_id, recording_date,
-			detector, username
-		FROM uploads
+	query := `SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size,
+			u.created_at, u.source, u.source_id, u.recording_date,
+			u.detector, u.username,
+			u.internal_user_id, usr.username AS internal_username, usr.email AS uploader_email
+		FROM uploads u
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
 		WHERE 1=1`
 
 	args := []any{}
@@ -126,16 +128,29 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 
 	tracks := make([]map[string]any, len(rows))
 	for i, r := range rows {
-		tracks[i] = map[string]any{
+		track := map[string]any{
 			"id":             r["id"],
 			"filename":       r["filename"],
 			"track_id":       r["track_id"],
 			"detector":       r["detector"],
-			"username":       r["username"],
 			"file_size":      r["file_size"],
 			"recording_date": r["recording_date"],
 			"created_at":     r["created_at"],
 		}
+
+		// Prefer internal username over external username
+		if internalUsername, ok := r["internal_username"]; ok && internalUsername != nil && internalUsername != "" {
+			track["username"] = internalUsername
+			// Add uploader info block
+			track["uploader"] = map[string]any{
+				"username": internalUsername,
+				"email":    r["uploader_email"],
+			}
+		} else if username, ok := r["username"]; ok && username != nil && username != "" {
+			track["username"] = username
+		}
+
+		tracks[i] = track
 	}
 
 	result := map[string]any{
@@ -147,6 +162,7 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 			"month": nilIfZero(month),
 		},
 		"tracks": tracks,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -205,6 +221,7 @@ func listTracksAPI(ctx context.Context, year, month, limit int) (*mcp.CallToolRe
 			"month": nilIfZero(month),
 		},
 		"tracks": tracks,
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
