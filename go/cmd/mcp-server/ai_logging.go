@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"log"
-	"net/http"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -16,6 +13,8 @@ import (
 )
 
 type aiLogEvent struct {
+	UserID         string `json:"user_id"`
+	UserEmail      string `json:"user_email"`
 	SessionID      string `json:"session_id"`
 	Timestamp      string `json:"timestamp"`
 	ToolName       string `json:"tool_name"`
@@ -28,78 +27,90 @@ type aiLogEvent struct {
 var (
 	gitCommitOnce sync.Once
 	gitCommitHash string
-
-	entireOnce     sync.Once
-	entireEndpoint string
-	entireAPIKey   string
-	entireClient   *http.Client
 )
 
-// logAISession records a structured log entry for an AI tool execution.
+// logAISessionWithUser records a structured log entry for an AI tool execution (DuckDB-only).
 // It is intentionally asynchronous and must not block the main tool handler.
-func logAISession(toolName string, query string, duration int64, err error) {
+func logAISessionWithUser(
+	toolName string,
+	query string,
+	duration int64,
+	err error,
+	userID string,
+	userEmail string,
+) {
+
 	go func() {
+
 		event := aiLogEvent{
-			SessionID:      newSessionID(),
-			Timestamp:      time.Now().UTC().Format(time.RFC3339),
+
+			UserID:    userID,
+			UserEmail: userEmail,
+
+			SessionID: newSessionID(),
+
+			Timestamp: time.Now().
+				UTC().
+				Format(time.RFC3339),
+
 			ToolName:       toolName,
 			GeneratedQuery: sanitizeQuery(query),
-			DurationMs:     duration,
-			CommitHash:     getGitCommit(),
-			Error:          errString(err),
+
+			DurationMs: duration,
+
+			CommitHash: getGitCommit(),
+
+			Error: errString(err),
 		}
 
 		data, marshalErr := json.Marshal(event)
+
 		if marshalErr != nil {
-			log.Printf("failed to marshal AI log event: %v", marshalErr)
+
+			log.Printf(
+				"failed to marshal AI log event: %v",
+				marshalErr,
+			)
+
 			return
 		}
 
-		// Always log locally.
 		log.Println(string(data))
 
-		// Persist to DuckDB using existing client (non-blocking, same goroutine).
 		insertQueryLog(event)
-
-		// Optionally export to Entire if configured.
-		initEntire()
-		if entireEndpoint == "" || entireClient == nil {
-			return
-		}
-
-		req, reqErr := http.NewRequest("POST", entireEndpoint, bytes.NewReader(data))
-		if reqErr != nil {
-			log.Printf("failed to create Entire export request: %v", reqErr)
-			return
-		}
-		req.Header.Set("Content-Type", "application/json")
-		if entireAPIKey != "" {
-			req.Header.Set("Authorization", "Bearer "+entireAPIKey)
-		}
-
-		resp, httpErr := entireClient.Do(req)
-		if httpErr != nil {
-			log.Printf("failed to send log to Entire: %v", httpErr)
-			return
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode >= 300 {
-			log.Printf("Entire export returned non-success status: %d", resp.StatusCode)
-		}
 	}()
 }
+
 
 // insertQueryLog writes one aiLogEvent to the DuckDB table mcp_ai_query_log using the shared duckDB connection.
 // It is safe to call from the logging goroutine; errors are logged and never panic.
 func insertQueryLog(event aiLogEvent) {
+
 	if duckDB == nil {
 		return
 	}
+
 	_, err := duckDB.Exec(`
-		INSERT INTO mcp_ai_query_log (session_id, timestamp, tool_name, generated_query, duration_ms, commit_hash, error)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+
+		INSERT INTO mcp_ai_query_log (
+
+			user_id,
+			user_email,
+			session_id,
+			timestamp,
+			tool_name,
+			generated_query,
+			duration_ms,
+			commit_hash,
+			error
+
+		)
+
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+
 	`,
+		event.UserID,
+		event.UserEmail,
 		event.SessionID,
 		event.Timestamp,
 		event.ToolName,
@@ -108,8 +119,13 @@ func insertQueryLog(event aiLogEvent) {
 		event.CommitHash,
 		event.Error,
 	)
+
 	if err != nil {
-		log.Printf("failed to insert AI log event into DuckDB: %v", err)
+
+		log.Printf(
+			"failed to insert AI log event into DuckDB: %v",
+			err,
+		)
 	}
 }
 
@@ -124,8 +140,15 @@ func executeWithLogging(
 	rows, err := fn()
 	duration := time.Since(start).Milliseconds()
 
-	logAISession(toolName, query, duration, err)
-	return rows, err
+	logAISessionWithUser(
+		toolName,
+		query,
+		duration,
+		err,
+		"", // no user info available in this path
+		"",
+	)
+		return rows, err
 }
 
 // getGitCommit returns the current git HEAD commit hash.
@@ -141,17 +164,6 @@ func getGitCommit() string {
 		gitCommitHash = strings.TrimSpace(string(out))
 	})
 	return gitCommitHash
-}
-
-// initEntire lazily initializes Entire export configuration and HTTP client.
-func initEntire() {
-	entireOnce.Do(func() {
-		entireEndpoint = strings.TrimSpace(os.Getenv("ENTIRE_ENDPOINT"))
-		entireAPIKey = strings.TrimSpace(os.Getenv("ENTIRE_API_KEY"))
-		entireClient = &http.Client{
-			Timeout: 2 * time.Second,
-		}
-	})
 }
 
 var singleQuotedLiteral = regexp.MustCompile(`'[^']*'`)

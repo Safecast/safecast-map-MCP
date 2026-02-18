@@ -60,6 +60,7 @@ func main() {
 	mcpServer.AddTool(sensorHistoryToolDef, instrument("sensor_history", handleSensorHistory))
 	mcpServer.AddTool(queryAnalyticsToolDef, instrument("query_analytics", handleQueryAnalytics))
 	mcpServer.AddTool(radiationStatsToolDef, instrument("radiation_stats", handleRadiationStats))
+	mcpServer.AddTool(queryDuckDBLogsToolDef, instrument("query_duckdb_logs", handleQueryDuckDBLogs))
 
 	// 🚨 TRANSPORT SWITCH
 	if os.Getenv("MCP_TRANSPORT") == "stdio" {
@@ -124,29 +125,61 @@ func pingHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 	return mcp.NewToolResultText("pong"), nil
 }
 
-// instrument wraps a tool handler with logging.
-func instrument(name string, h func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func instrument(
+	name string,
+	h func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error),
+) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
 		start := time.Now()
+
+		// Extract user info from MCP request arguments
+		userID := ""
+		userEmail := ""
+
+		if req.Params.Arguments != nil {
+
+			if args, ok := req.Params.Arguments.(map[string]any); ok {
+
+				if v, ok := args["user_id"].(string); ok {
+					userID = v
+				}
+
+				if v, ok := args["user_email"].(string); ok {
+					userEmail = v
+				}
+			}
+		}
+
+		// Execute tool
 		res, err := h(ctx, req)
+
 		duration := time.Since(start)
 
-		// DuckDB audit log (existing)
+		// Existing DuckDB analytics log
 		resultCount := 0
 		if res != nil {
 			resultCount = len(res.Content)
 		}
-		args := make(map[string]any)
+
+		args := map[string]any{}
 		if req.Params.Arguments != nil {
 			if argsMap, ok := req.Params.Arguments.(map[string]any); ok {
 				args = argsMap
 			}
 		}
+
 		LogQueryAsync(name, args, resultCount, duration, "claude-client")
 
-		// Tool-level AI/observability: one log entry per invocation (success or failure)
-		logAISession(name, "", duration.Milliseconds(), err)
+		logAISessionWithUser(
+			name,
+			"",
+			duration.Milliseconds(),
+			err,
+			userID,
+			userEmail,
+		)
 
 		return res, err
 	}
-}
