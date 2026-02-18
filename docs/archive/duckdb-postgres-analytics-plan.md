@@ -1,5 +1,9 @@
 # Plan: DuckDB + Postgres for Fast Analysis of MCP Queries
 
+**Status:** ✅ IMPLEMENTED (See ../../README.md for current documentation)
+
+> **Implementation**: DuckDB analytics engine is now integrated with Postgres attachment for radiation data analytics (`radiation_stats` tool) and local logging for usage analytics (`query_analytics` tool). See `duckdb_client.go` and `tool_analytics.go`.
+
 This document outlines a plan for using **DuckDB** together with your existing **PostgreSQL** database to support fast analytics—either over **MCP tool usage** (who called which tools, when, with what params) or over the **Safecast radiation data** itself, without slowing down the live MCP server.
 
 **Important:** There is no DuckDB extension that runs *inside* Postgres. The standard approach is the other way around: **DuckDB connects to Postgres** via its `postgres` extension (postgres_scanner) and runs analytical queries in DuckDB, reading from Postgres on demand. That’s what this plan is based on.

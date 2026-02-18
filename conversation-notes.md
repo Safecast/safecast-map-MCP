@@ -1,6 +1,9 @@
 # Conversation Notes: Fix MCP SSE Server 404 on POST
 
 **Date:** 2026-02-08
+**Status:** 🗄️ ARCHIVED - Historical reference only
+
+> **Note**: This document describes the SSE server debugging process from February 2026. The implementation details may have evolved since then. For current architecture, see [README.md](README.md).
 
 ## Problem
 

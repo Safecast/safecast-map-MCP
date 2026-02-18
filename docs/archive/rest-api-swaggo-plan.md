@@ -1,5 +1,9 @@
 # Plan: REST API Layer + Swaggo Docs for Safecast MCP Server
 
+**Status:** ✅ IMPLEMENTED (See ../../README.md for current documentation)
+
+> **Implementation Note**: The swagger-theme.css mentioned in this plan was implemented as embedded CSS in `rest.go` via the `serveSwaggerTheme()` handler function, rather than as a separate static file.
+
 ## Context
 The MCP server only exposes MCP protocol endpoints today. A REST API layer is needed so that the Safecast web map and Minerva students can query radiation data without an AI client. Swaggo will keep API documentation inline with the Go source. The Swagger UI will be themed to match simplemap's admin/profile pages (same CSS custom properties, font stack, light/dark mode).
 
