@@ -329,6 +329,46 @@ Diagnostic tool that returns database connection info, PostgreSQL version, repli
 
 Health check. Returns `"pong"`. No parameters required.
 
+## REST API
+
+The server also exposes a standard REST API on the same port as the MCP endpoints. All endpoints return JSON and are documented interactively via Swagger UI.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/radiation` | Find measurements near lat/lon |
+| GET | `/api/area` | Find measurements in a bounding box |
+| GET | `/api/tracks` | List bGeigie measurement tracks |
+| GET | `/api/track/{id}` | Get measurements from a track |
+| GET | `/api/device/{id}/history` | Device history (bGeigie + fixed sensors) |
+| GET | `/api/sensors` | List active fixed sensors |
+| GET | `/api/sensor/{id}/current` | Latest reading from a sensor |
+| GET | `/api/sensor/{id}/history` | Time-series from a sensor |
+| GET | `/api/spectra` | Browse gamma spectroscopy records |
+| GET | `/api/spectrum/{marker_id}` | Full spectroscopy channel data |
+| GET | `/api/stats` | Aggregate radiation statistics |
+| GET | `/api/info/{topic}` | Reference information (units, safety levels, etc.) |
+| GET | `/docs/` | Interactive Swagger UI |
+| GET | `/docs/doc.json` | Raw OpenAPI spec |
+
+**Quick example:**
+```bash
+curl "http://localhost:3333/api/radiation?lat=37.42&lon=141.03&radius_m=5000&limit=10"
+```
+
+### Updating API Documentation
+
+The Swagger docs are generated from `// @Summary`, `// @Param`, and `// @Router` annotations in the `rest_*.go` files. After changing any annotation, regenerate with:
+
+```bash
+# Install swag CLI (one-time)
+go install github.com/swaggo/swag/cmd/swag@latest
+
+# Regenerate from go/ directory
+cd go && swag init -g cmd/mcp-server/rest.go --dir cmd/mcp-server --output cmd/mcp-server/docs
+```
+
+The generated `docs/` folder is committed to the repo — the deployed binary does not need the swag CLI.
+
 ## Quick Start
 
 ```bash
@@ -337,7 +377,9 @@ go build -o safecast-mcp ./cmd/mcp-server/
 ./safecast-mcp
 ```
 
-The server listens on port 3333 by default and provides access to both historical bGeigie data and real-time sensor readings.
+The server listens on port 3333 by default. It serves both MCP protocol endpoints and the REST API.
+
+Open `http://localhost:3333/docs/` for the interactive Swagger UI.
 
 ### Environment Variables
 

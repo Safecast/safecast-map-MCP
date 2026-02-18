@@ -16,3 +16,6 @@ safecast-mcp-test
 
 # OS
 .DS_Store
+
+# Local docs (not for repo)
+minerva-onboarding.md

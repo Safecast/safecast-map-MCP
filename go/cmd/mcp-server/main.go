@@ -88,6 +88,10 @@ func main() {
 	mux.Handle("/mcp-http", httpServer)
 	mux.Handle("/", sseServer) // SSE server matches /mcp/sse and /mcp/message internally
 
+	// REST API + Swagger UI
+	restHandler := &RESTHandler{}
+	restHandler.Register(mux)
+
 	// Determine listening port (default 3333)
 	port := os.Getenv("MCP_PORT")
 	if port == "" {
@@ -97,6 +101,8 @@ func main() {
 	log.Printf("Starting MCP server on %s", listenAddr)
 	log.Println("  SSE endpoint: /mcp/sse")
 	log.Println("  Streamable HTTP endpoint: /mcp-http")
+	log.Println("  REST API: /api/...")
+	log.Println("  Swagger UI: /docs/")
 	if err := http.ListenAndServe(listenAddr, mux); err != nil {
 		log.Fatal(err)
 	}
