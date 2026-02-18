@@ -244,18 +244,27 @@ const swaggerThemeCSS = `
   left: -9999px !important;
   max-height: 0 !important;
 }
-/* Cover logo area with dark background immediately */
+/* Hide ALL children of topbar-wrapper except download-url-wrapper */
+.swagger-ui .topbar-wrapper > *:not(.download-url-wrapper) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+/* Cover entire left side with dark background immediately */
 .swagger-ui .topbar-wrapper::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
-  width: 200px;
+  width: 50%;
   height: 100%;
   background: #424242;
   z-index: 1;
+  pointer-events: none;
 }
-/* Move explore section to the left to cover logo area */
+/* Move explore section to the left */
 .swagger-ui .topbar-wrapper .download-url-wrapper {
   margin-left: 0 !important;
   padding-left: 20px !important;
