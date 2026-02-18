@@ -7,7 +7,7 @@ import (
 )
 
 var searchAreaToolDef = mcp.NewTool("search_area",
-	mcp.WithDescription("Find radiation measurements within a geographic bounding box. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
+	mcp.WithDescription("Find radiation measurements within a geographic bounding box."),
 	mcp.WithNumber("min_lat",
 		mcp.Description("Southern boundary latitude"),
 		mcp.Min(-90), mcp.Max(90),
@@ -79,17 +79,14 @@ func handleSearchArea(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, limit int) (*mcp.CallToolResult, error) {
 	query := `
-		SELECT m.id, m.doserate AS value, 'µSv/h' AS unit,
-			to_timestamp(m.date) AS captured_at,
-			m.lat AS latitude, m.lon AS longitude,
-			m.device_id, m.altitude AS height, m.detector,
-			m.trackid, m.has_spectrum,
-			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
-		FROM markers m
-		LEFT JOIN uploads u ON u.track_id = m.trackid
-		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
-		WHERE m.geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)
-		ORDER BY m.date DESC
+		SELECT id, doserate AS value, 'µSv/h' AS unit,
+			to_timestamp(date) AS captured_at,
+			lat AS latitude, lon AS longitude,
+			device_id, altitude AS height, detector,
+			trackid, has_spectrum
+		FROM markers
+		WHERE geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)
+		ORDER BY date DESC
 		LIMIT $5`
 
 	rows, err := queryRows(ctx, query, minLon, minLat, maxLon, maxLat, limit)
@@ -99,8 +96,8 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 
 	countRow, _ := queryRow(ctx, `
 		SELECT count(*) AS total
-		FROM markers m
-		WHERE m.geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)`,
+		FROM markers
+		WHERE geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)`,
 		minLon, minLat, maxLon, maxLat)
 	total := 0
 	if countRow != nil {
@@ -116,7 +113,7 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 
 	measurements := make([]map[string]any, len(rows))
 	for i, r := range rows {
-		measurement := map[string]any{
+		measurements[i] = map[string]any{
 			"id":    r["id"],
 			"value": r["value"],
 			"unit":  r["unit"],
@@ -131,16 +128,6 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 			"track_id":    r["trackid"],
 			"has_spectrum": r["has_spectrum"],
 		}
-
-		// Add uploader information if available
-		if uploaderUsername, ok := r["uploader_username"]; ok && uploaderUsername != nil && uploaderUsername != "" {
-			measurement["uploader"] = map[string]any{
-				"username": uploaderUsername,
-				"email":    r["uploader_email"],
-			}
-		}
-
-		measurements[i] = measurement
 	}
 
 	result := map[string]any{
@@ -154,7 +141,6 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 			"max_lon": maxLon,
 		},
 		"measurements": measurements,
-		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -187,7 +173,6 @@ func searchAreaAPI(ctx context.Context, minLat, maxLat, minLon, maxLon float64, 
 			"max_lon": maxLon,
 		},
 		"measurements": normalized,
-		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
