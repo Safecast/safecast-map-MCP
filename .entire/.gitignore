@@ -2,3 +2,4 @@ tmp/
 settings.local.json
 metadata/
 logs/
+MCP_TOOL_LOGGING_AUDIT.md

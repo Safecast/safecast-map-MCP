@@ -10,11 +10,11 @@ import (
 // Tool Definitions
 
 var queryAnalyticsToolDef = mcp.NewTool("query_analytics",
-	mcp.WithDescription("Get usage statistics for MCP tools (call counts, duration). Powered by DuckDB local logs. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
+	mcp.WithDescription("Get usage statistics for MCP tools (call counts, duration). Powered by DuckDB local logs."),
 )
 
 var radiationStatsToolDef = mcp.NewTool("radiation_stats",
-	mcp.WithDescription("Get aggregate radiation statistics from the Safecast database (e.g., average dose rate by year/month). Powered by DuckDB+Postgres. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
+	mcp.WithDescription("Get aggregate radiation statistics from the Safecast database (e.g., average dose rate by year/month). Powered by DuckDB+Postgres."),
 	mcp.WithString("interval",
 		mcp.Description("Aggregation interval: 'year', 'month', or 'overall'"),
 		mcp.Enum("year", "month", "overall"),
@@ -29,15 +29,16 @@ func handleQueryAnalytics(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		return mcp.NewToolResultError("DuckDB analytics engine is not initialized"), nil
 	}
 
-    // Execute query
-	rows, err := duckDB.Query(`
+	const analyticsQuery = `
 		SELECT tool_name, COUNT(*) as count, 
                AVG(duration_ms) as avg_ms, 
                MAX(duration_ms) as max_ms
 		FROM mcp_query_log
 		GROUP BY tool_name
 		ORDER BY count DESC
-	`)
+	`
+
+	rows, err := duckDB.Query(analyticsQuery)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Query failed: %v", err)), nil
 	}
@@ -62,7 +63,6 @@ func handleQueryAnalytics(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return jsonResult(map[string]any{
 		"stats": stats,
 		"source": "duckdb_local_log",
-		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	})
 }
 
@@ -111,7 +111,7 @@ func handleRadiationStats(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		`
 	}
 
-    // Execute against DuckDB which proxies to Postgres
+	// Execute against DuckDB which proxies to Postgres
 	rows, err := duckDB.Query(query)
 	if err != nil {
         // Provide helpful error if table doesn't exist (e.g. schema mismatch)
@@ -152,6 +152,5 @@ func handleRadiationStats(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		"interval": interval,
 		"data":     results,
 		"source":   "duckdb_postgres_attach",
-		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	})
 }

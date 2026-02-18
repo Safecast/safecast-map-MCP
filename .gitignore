@@ -4,12 +4,13 @@
 *.exe
 *.log
 # Go binaries
-mcp-server
+go/cmd/mcp-server/mcp-server
 safecast-mcp
 safecast-mcp-test
 
 # Editor
 .vscode/
+.cursor/
 
 # Secrets
 .env
