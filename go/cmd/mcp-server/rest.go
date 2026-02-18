@@ -248,24 +248,10 @@ const swaggerThemeCSS = `
   left: -9999px !important;
   max-height: 0 !important;
 }
-/* Cover logo area with dark background immediately */
-.swagger-ui .topbar-wrapper::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 250px;
-  height: 100%;
-  background: #424242;
-  z-index: 1;
-  pointer-events: none;
-}
 /* Move explore section to the left */
 .swagger-ui .topbar-wrapper .download-url-wrapper {
   margin-left: 0 !important;
   padding-left: 20px !important;
-  position: relative;
-  z-index: 2;
 }
 /* Hide the info link that shows /docs/doc.json */
 .swagger-ui .info .link,
