@@ -79,6 +79,15 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 				// Change page title
 				document.title = 'Safecast MCP Docs';
 
+				// Remove Swagger logo completely from DOM
+				const swaggerLogo = document.querySelector('.topbar-wrapper .link');
+				if (swaggerLogo) {
+					swaggerLogo.remove();
+				}
+				// Also remove any img tags in topbar as backup
+				const logoImgs = document.querySelectorAll('.topbar-wrapper img');
+				logoImgs.forEach(img => img.remove());
+
 				// Inject Safecast favicon
 				const link16 = document.createElement('link');
 				link16.rel = 'icon';
