@@ -51,8 +51,7 @@ jobs:
             ENV_FILE="$ENV_FILE
           DATABASE_URL=$DATABASE_URL"
           fi
-          ENV_FILE="$ENV_FILE
-          DUCKDB_PATH=/root/safecast-mcp-server/analytics.duckdb"
+          ENV_FILE="$ENV_FILE"$'\nDUCKDB_PATH=/root/safecast-mcp-server/analytics.duckdb'
           echo "$ENV_FILE" | $SSH "cat > /root/safecast-mcp-server/.env"
 
           # Replace binary and restart via systemd
