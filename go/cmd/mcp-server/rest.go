@@ -22,6 +22,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -30,6 +31,15 @@ import (
 	_ "github.com/your-org/safecast-mcp-server/cmd/mcp-server/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+//go:embed static/favicon.ico
+var faviconICO []byte
+
+//go:embed static/favicon-16x16.png
+var favicon16 []byte
+
+//go:embed static/favicon-32x32.png
+var favicon32 []byte
 
 // RESTHandler wires all REST API routes onto a mux.
 type RESTHandler struct{}
@@ -55,12 +65,37 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/stats", h.handleStats)
 	mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
 
+	// Favicon endpoints
+	mux.HandleFunc("/docs/favicon.ico", serveFavicon)
+	mux.HandleFunc("/docs/favicon-16x16.png", serveFavicon16)
+	mux.HandleFunc("/docs/favicon-32x32.png", serveFavicon32)
+
 	// Swagger UI — themed to match simplemap admin pages
 	mux.HandleFunc("/docs/swagger-theme.css", serveSwaggerTheme)
 	mux.Handle("/docs/", httpSwagger.Handler(
 		httpSwagger.URL("/docs/doc.json"),
 		httpSwagger.UIConfig(map[string]string{
 			"onComplete": `function() {
+				// Inject Safecast favicon
+				const link16 = document.createElement('link');
+				link16.rel = 'icon';
+				link16.type = 'image/png';
+				link16.sizes = '16x16';
+				link16.href = '/docs/favicon-16x16.png';
+				document.head.appendChild(link16);
+
+				const link32 = document.createElement('link');
+				link32.rel = 'icon';
+				link32.type = 'image/png';
+				link32.sizes = '32x32';
+				link32.href = '/docs/favicon-32x32.png';
+				document.head.appendChild(link32);
+
+				const linkICO = document.createElement('link');
+				linkICO.rel = 'shortcut icon';
+				linkICO.href = '/docs/favicon.ico';
+				document.head.appendChild(linkICO);
+
 				// Inject custom CSS
 				const style = document.createElement('link');
 				style.rel = 'stylesheet';
@@ -140,6 +175,30 @@ func serveMCPResult(w http.ResponseWriter, result *mcp.CallToolResult, err error
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.WriteString(w, text)
+}
+
+// serveFavicon serves the Safecast favicon.ico
+func serveFavicon(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/x-icon")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(faviconICO)
+}
+
+// serveFavicon16 serves the Safecast 16x16 favicon
+func serveFavicon16(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(favicon16)
+}
+
+// serveFavicon32 serves the Safecast 32x32 favicon
+func serveFavicon32(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(favicon32)
 }
 
 // serveSwaggerTheme serves the custom CSS that makes Swagger UI match simplemap's design.
