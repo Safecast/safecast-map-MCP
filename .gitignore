@@ -3,10 +3,10 @@
 /pkg/
 *.exe
 *.log
-# Go binaries
-mcp-server
-safecast-mcp
-safecast-mcp-test
+# Go binaries (in go/ directory only)
+/go/mcp-server
+/go/safecast-mcp
+/go/safecast-mcp-test
 
 # Editor
 .vscode/
