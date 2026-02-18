@@ -88,6 +88,12 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 				const logoImgs = document.querySelectorAll('.topbar-wrapper img');
 				logoImgs.forEach(img => img.remove());
 
+				// Remove SVG sprite/defs that contains Swagger icons
+				const svgDefs = document.querySelector('svg[xmlns] defs');
+				if (svgDefs && svgDefs.parentElement) {
+					svgDefs.parentElement.remove();
+				}
+
 				// Inject Safecast favicon
 				const link16 = document.createElement('link');
 				link16.rel = 'icon';
