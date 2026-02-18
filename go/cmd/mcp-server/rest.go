@@ -230,6 +230,7 @@ const swaggerThemeCSS = `
 .swagger-ui .topbar-wrapper {
   padding-left: 0 !important;
   overflow: hidden !important;
+  max-width: 100% !important;
 }
 .swagger-ui .topbar-wrapper img,
 .swagger-ui .topbar-wrapper a,
@@ -241,11 +242,25 @@ const swaggerThemeCSS = `
   height: 0 !important;
   position: absolute !important;
   left: -9999px !important;
+  max-height: 0 !important;
+}
+/* Cover logo area with dark background immediately */
+.swagger-ui .topbar-wrapper::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 200px;
+  height: 100%;
+  background: #424242;
+  z-index: 1;
 }
 /* Move explore section to the left to cover logo area */
 .swagger-ui .topbar-wrapper .download-url-wrapper {
   margin-left: 0 !important;
   padding-left: 20px !important;
+  position: relative;
+  z-index: 2;
 }
 /* Hide the info link that shows /docs/doc.json */
 .swagger-ui .info .link,
@@ -259,7 +274,7 @@ const swaggerThemeCSS = `
   position: fixed;
   top: 12px;
   right: 20px;
-  z-index: 10000;
+  z-index: 10001;
   padding: 8px 16px;
   background: #0066cc;
   color: white;
@@ -269,8 +284,12 @@ const swaggerThemeCSS = `
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Arial, sans-serif;
   font-size: 14px;
   font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
   transition: background 0.2s;
+}
+/* Hide any buttons that might show behind dark mode toggle */
+.swagger-ui .topbar .download-url-button {
+  display: none !important;
 }
 #dark-mode-toggle:hover {
   background: #0055aa;
