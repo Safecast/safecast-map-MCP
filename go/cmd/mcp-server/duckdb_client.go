@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -13,27 +14,26 @@ var duckDB *sql.DB
 
 // initDuckDB initializes the DuckDB connection and attaches the Postgres database.
 func initDuckDB() error {
-	// Open DuckDB connection (in-memory)
-    // Note: "?access_mode=READ_WRITE" or similar flags can be used, but default is fine.
-    // If we want persistent logs, we might want a file path.
-    // The plan says "DuckDB (local audit log)". 
-    // Implementing purely in-memory for now as a robust default, 
-    // but allowing a path via DUCKDB_PATH if set.
-    
-    duckPath := os.Getenv("DUCKDB_PATH")
-    if duckPath == "" {
-        duckPath = "" // empty DSN creates in‑memory DuckDB
-    }
-
+	// Configure DuckDB path: use DUCKDB_PATH env var or fallback to local file
+	duckPath := os.Getenv("DUCKDB_PATH")
+	if duckPath == "" {
+		duckPath = "./analytics.duckdb"
+	}
+	
+	// Enable concurrent access with READ_WRITE mode
+	dsn := duckPath + "?access_mode=READ_WRITE"
+	
 	var err error
-	duckDB, err = sql.Open("duckdb", duckPath)
+	duckDB, err = sql.Open("duckdb", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open duckdb: %w", err)
-	}
+	}    
 
 	if err := duckDB.Ping(); err != nil {
 		return fmt.Errorf("failed to ping duckdb: %w", err)
 	}
+	
+	log.Printf("DuckDB initialized at %s", duckPath)
 
 	// Install postgres extension (ignore error if already installed/bundled)
 	duckDB.Exec("INSTALL postgres;")
@@ -61,21 +61,69 @@ func initDuckDB() error {
         log.Println("Warning: DATABASE_URL not set, skipping Postgres attachment")
     }
 
-	// Create Audit Log Table
-	createTableQuery := `
-	CREATE TABLE IF NOT EXISTS mcp_query_log (
-		id            BIGINT DEFAULT nextval('seq_query_log'),
-		tool_name     VARCHAR,
-		params        JSON,
-		result_count  INTEGER,
-		duration_ms   DOUBLE,
-		client_info   VARCHAR,
-		created_at    TIMESTAMPTZ DEFAULT now()
+	// Create schema version tracking table
+	schemaVersionQuery := `
+	CREATE TABLE IF NOT EXISTS schema_version (
+		version INTEGER
 	);
-    CREATE SEQUENCE IF NOT EXISTS seq_query_log;
 	`
+	if _, err := duckDB.Exec(schemaVersionQuery); err != nil {
+		return fmt.Errorf("failed to create schema_version table: %w", err)
+	}
+	
+	// Initialize schema version if empty
+	var versionCount int
+	err = duckDB.QueryRow("SELECT COUNT(*) FROM schema_version").Scan(&versionCount)
+	if err == nil && versionCount == 0 {
+		if _, err := duckDB.Exec("INSERT INTO schema_version (version) VALUES (1)"); err != nil {
+			log.Printf("Warning: failed to initialize schema version: %v", err)
+		}
+	}
+
+	// Create Audit Log Table (tool-level analytics: instrument(), LogQueryAsync)
+    createTableQuery := `
+    CREATE SEQUENCE IF NOT EXISTS seq_query_log;
+    
+    CREATE TABLE IF NOT EXISTS mcp_query_log (
+        id BIGINT DEFAULT nextval('seq_query_log'),
+        tool_name VARCHAR,
+        params JSON,
+        result_count INTEGER,
+        duration_ms DOUBLE,
+        client_info VARCHAR,
+        created_at TIMESTAMPTZ DEFAULT now()
+    );
+    `    
 	if _, err := duckDB.Exec(createTableQuery); err != nil {
 		return fmt.Errorf("failed to create audit log table: %w", err)
+	}
+
+	// AI session log table (ai_logging.go: insertQueryLog). Same DuckDB, separate table to avoid breaking existing analytics.
+	createAILogQuery := `
+	CREATE TABLE IF NOT EXISTS mcp_ai_query_log (
+		session_id      TEXT,
+		timestamp       TIMESTAMP,
+		tool_name       TEXT,
+		generated_query TEXT,
+		duration_ms      BIGINT,
+		commit_hash     TEXT,
+		error           TEXT
+	);
+	`
+	if _, err := duckDB.Exec(createAILogQuery); err != nil {
+		return fmt.Errorf("failed to create AI query log table: %w", err)
+	}
+	
+	// Create indexes for production performance
+	indexQueries := []string{
+		"CREATE INDEX IF NOT EXISTS idx_ai_query_log_timestamp ON mcp_ai_query_log(timestamp);",
+		"CREATE INDEX IF NOT EXISTS idx_ai_query_log_tool_name ON mcp_ai_query_log(tool_name);",
+	}
+	for _, idxQuery := range indexQueries {
+		if _, err := duckDB.Exec(idxQuery); err != nil {
+			log.Printf("Warning: failed to create index: %v", err)
+			// Don't fail initialization if index creation fails (indexes may already exist)
+		}
 	}
 
 	return nil
@@ -88,18 +136,23 @@ func LogQueryAsync(toolName string, params map[string]any, resultCount int, dura
     }
     
     go func() {
-        // Simple JSON serialization for params
-        // In a real app, use encoding/json, but here we just fmt for simplicity or simple map
-        // duckdb supports JSON type.
-        
-        // We'll simplisticly stringify map for now to avoid heavyweight imports in this snippet
-        // or actually, let's use a simple string representation
-        paramsStr := fmt.Sprintf("%v", params)
+        // Proper JSON serialization for params field
+        var paramsJSON []byte
+        if params != nil {
+            var err error
+            paramsJSON, err = json.Marshal(params)
+            if err != nil {
+                log.Printf("Error marshaling params to JSON: %v", err)
+                paramsJSON = []byte("{}")
+            }
+        } else {
+            paramsJSON = []byte("{}")
+        }
 
         _, err := duckDB.Exec(`
             INSERT INTO mcp_query_log (tool_name, params, result_count, duration_ms, client_info)
             VALUES (?, ?, ?, ?, ?)
-        `, toolName, paramsStr, resultCount, float64(duration.Milliseconds()), clientInfo)
+        `, toolName, string(paramsJSON), resultCount, float64(duration.Milliseconds()), clientInfo)
         
         if err != nil {
             log.Printf("Error logging query to DuckDB: %v", err)

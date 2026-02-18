@@ -58,6 +58,9 @@ func logAISession(toolName string, query string, duration int64, err error) {
 		// Always log locally.
 		log.Println(string(data))
 
+		// Persist to DuckDB using existing client (non-blocking, same goroutine).
+		insertQueryLog(event)
+
 		// Optionally export to Entire if configured.
 		initEntire()
 		if entireEndpoint == "" || entireClient == nil {
@@ -85,6 +88,29 @@ func logAISession(toolName string, query string, duration int64, err error) {
 			log.Printf("Entire export returned non-success status: %d", resp.StatusCode)
 		}
 	}()
+}
+
+// insertQueryLog writes one aiLogEvent to the DuckDB table mcp_ai_query_log using the shared duckDB connection.
+// It is safe to call from the logging goroutine; errors are logged and never panic.
+func insertQueryLog(event aiLogEvent) {
+	if duckDB == nil {
+		return
+	}
+	_, err := duckDB.Exec(`
+		INSERT INTO mcp_ai_query_log (session_id, timestamp, tool_name, generated_query, duration_ms, commit_hash, error)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`,
+		event.SessionID,
+		event.Timestamp,
+		event.ToolName,
+		event.GeneratedQuery,
+		event.DurationMs,
+		event.CommitHash,
+		event.Error,
+	)
+	if err != nil {
+		log.Printf("failed to insert AI log event into DuckDB: %v", err)
+	}
 }
 
 // executeWithLogging logs at MCP runtime (tool execution) level.
