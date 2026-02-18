@@ -76,6 +76,9 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 		httpSwagger.URL("/docs/doc.json"),
 		httpSwagger.UIConfig(map[string]string{
 			"onComplete": `function() {
+				// Change page title
+				document.title = 'Safecast MCP Docs';
+
 				// Inject Safecast favicon
 				const link16 = document.createElement('link');
 				link16.rel = 'icon';
