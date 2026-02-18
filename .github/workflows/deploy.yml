@@ -61,6 +61,45 @@ jobs:
             chmod +x safecast-mcp && \
             systemctl restart safecast-mcp"
 
+          # Configure Apache proxy for REST API and Swagger
+          $SSH "
+            # Find the Apache config file for this domain
+            CONFIG_FILE=\$(grep -l 'ProxyPass.*mcp-http' /etc/apache2/sites-available/*.conf | head -1)
+
+            if [ -z \"\$CONFIG_FILE\" ]; then
+              echo 'ERROR: Could not find Apache config with mcp-http proxy'
+              exit 1
+            fi
+
+            echo \"Found config: \$CONFIG_FILE\"
+
+            # Backup the config
+            cp \"\$CONFIG_FILE\" \"\$CONFIG_FILE.bak-\$(date +%Y%m%d-%H%M%S)\"
+
+            # Check if /docs/ proxy already exists
+            if ! grep -q 'ProxyPass /docs/' \"\$CONFIG_FILE\"; then
+              echo 'Adding /docs/ and /api/ proxy rules...'
+
+              # Add the new proxy rules before the first ProxyPass line
+              sed -i '/ProxyPass.*mcp-http/i \    # REST API and Swagger UI\n    ProxyPass /docs/ http://localhost:3333/docs/\n    ProxyPassReverse /docs/ http://localhost:3333/docs/\n    ProxyPass /api/ http://localhost:3333/api/\n    ProxyPassReverse /api/ http://localhost:3333/api/\n' \"\$CONFIG_FILE\"
+
+              # Test Apache config
+              apachectl configtest
+
+              if [ \$? -eq 0 ]; then
+                echo 'Config test passed, reloading Apache...'
+                systemctl reload apache2
+                echo 'Apache reloaded successfully'
+              else
+                echo 'Config test failed, restoring backup...'
+                cp \"\$CONFIG_FILE.bak-\$(date +%Y%m%d-%H%M%S)\" \"\$CONFIG_FILE\"
+                exit 1
+              fi
+            else
+              echo '/docs/ proxy already configured'
+            fi
+          "
+
           # Wait for server to start
           sleep 10
 
