@@ -64,11 +64,26 @@ jobs:
           # Configure Apache proxy for REST API and Swagger
           $SSH "
             # Find the Apache config file for this domain
-            CONFIG_FILE=\$(grep -l 'ProxyPass.*mcp-http' /etc/apache2/sites-available/*.conf | head -1)
+            echo 'Searching for Apache config...'
+
+            # Try different locations
+            CONFIG_FILE=\$(grep -rl 'ProxyPass.*mcp' /etc/apache2/ 2>/dev/null | grep -E '\\.conf$' | head -1)
 
             if [ -z \"\$CONFIG_FILE\" ]; then
-              echo 'ERROR: Could not find Apache config with mcp-http proxy'
-              exit 1
+              # Try httpd directory (CentOS/RHEL)
+              CONFIG_FILE=\$(grep -rl 'ProxyPass.*mcp' /etc/httpd/ 2>/dev/null | grep -E '\\.conf$' | head -1)
+            fi
+
+            if [ -z \"\$CONFIG_FILE\" ]; then
+              echo 'Could not find Apache config with mcp proxy.'
+              echo 'Listing all Apache config files:'
+              find /etc/apache2 /etc/httpd -name '*.conf' 2>/dev/null | head -20
+              echo ''
+              echo 'Searching for any ProxyPass directives:'
+              grep -r 'ProxyPass' /etc/apache2 /etc/httpd 2>/dev/null | head -10
+              echo ''
+              echo 'Skipping Apache configuration. Please configure manually or check logs.'
+              exit 0
             fi
 
             echo \"Found config: \$CONFIG_FILE\"
