@@ -76,13 +76,7 @@ jobs:
 
             if [ -z \"\$CONFIG_FILE\" ]; then
               echo 'Could not find Apache config with mcp proxy.'
-              echo 'Listing all Apache config files:'
-              find /etc/apache2 /etc/httpd -name '*.conf' 2>/dev/null | head -20
-              echo ''
-              echo 'Searching for any ProxyPass directives:'
-              grep -r 'ProxyPass' /etc/apache2 /etc/httpd 2>/dev/null | head -10
-              echo ''
-              echo 'Skipping Apache configuration. Please configure manually or check logs.'
+              echo 'Skipping Apache configuration. Please configure manually.'
               exit 0
             fi
 
@@ -93,21 +87,34 @@ jobs:
 
             # Check if /docs/ proxy already exists
             if ! grep -q 'ProxyPass /docs/' \"\$CONFIG_FILE\"; then
-              echo 'Adding /docs/ and /api/ proxy rules...'
+              echo 'Adding /docs/ and /api/ proxy rules to all VirtualHost blocks...'
 
-              # Add the new proxy rules before the first ProxyPass line
-              sed -i '/ProxyPass.*mcp-http/i \    # REST API and Swagger UI\n    ProxyPass /docs/ http://localhost:3333/docs/\n    ProxyPassReverse /docs/ http://localhost:3333/docs/\n    ProxyPass /api/ http://localhost:3333/api/\n    ProxyPassReverse /api/ http://localhost:3333/api/\n' \"\$CONFIG_FILE\"
+              # Create temp file with the proxy rules (use printf to avoid heredoc in YAML)
+              printf '%s\\n' \
+                '    # REST API and Swagger UI' \
+                '    ProxyPass /docs/ http://localhost:3333/docs/' \
+                '    ProxyPassReverse /docs/ http://localhost:3333/docs/' \
+                '    ProxyPass /api/ http://localhost:3333/api/' \
+                '    ProxyPassReverse /api/ http://localhost:3333/api/' \
+                > /tmp/proxy-rules.txt
+
+              # Add rules before each </VirtualHost> closing tag
+              sed -i '/<\\/VirtualHost>/i \\' \"\$CONFIG_FILE\"
+              sed -i '/<\\/VirtualHost>/r /tmp/proxy-rules.txt' \"\$CONFIG_FILE\"
+
+              rm /tmp/proxy-rules.txt
 
               # Test Apache config
               apachectl configtest
 
-              if [ \$? -eq 0 ]; then
-                echo 'Config test passed, reloading Apache...'
-                systemctl reload apache2
-                echo 'Apache reloaded successfully'
+              if [ \\$? -eq 0 ]; then
+                echo 'Config test passed, restarting Apache...'
+                systemctl restart apache2
+                echo 'Apache restarted successfully'
               else
                 echo 'Config test failed, restoring backup...'
-                cp \"\$CONFIG_FILE.bak-\$(date +%Y%m%d-%H%M%S)\" \"\$CONFIG_FILE\"
+                LATEST_BACKUP=\\$(ls -t \"\$CONFIG_FILE\".bak-* | head -1)
+                cp \"\\$LATEST_BACKUP\" \"\$CONFIG_FILE\"
                 exit 1
               fi
             else
