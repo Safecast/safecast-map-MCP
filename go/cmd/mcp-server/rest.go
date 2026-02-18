@@ -219,11 +219,19 @@ const swaggerThemeCSS = `
 
 /* Hide Swagger logo and collapse the space */
 .swagger-ui .topbar-wrapper {
-  padding-left: 20px !important;
+  padding-left: 0 !important;
+  overflow: hidden !important;
 }
 .swagger-ui .topbar-wrapper img,
 .swagger-ui .topbar-wrapper a {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+/* Move explore section to the left to cover logo area */
+.swagger-ui .topbar-wrapper .download-url-wrapper {
+  margin-left: 0 !important;
+  padding-left: 20px !important;
 }
 
 /* Dark mode toggle button */
