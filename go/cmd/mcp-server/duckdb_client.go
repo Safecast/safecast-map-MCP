@@ -61,8 +61,9 @@ func initDuckDB() error {
         log.Println("Warning: DATABASE_URL not set, skipping Postgres attachment")
     }
 
-	// Create Audit Log Table
-	createTableQuery := `
+	// Create sequence first, then the audit log table that references it
+	createSchemaQuery := `
+	CREATE SEQUENCE IF NOT EXISTS seq_query_log;
 	CREATE TABLE IF NOT EXISTS mcp_query_log (
 		id            BIGINT DEFAULT nextval('seq_query_log'),
 		tool_name     VARCHAR,
@@ -72,10 +73,9 @@ func initDuckDB() error {
 		client_info   VARCHAR,
 		created_at    TIMESTAMPTZ DEFAULT now()
 	);
-    CREATE SEQUENCE IF NOT EXISTS seq_query_log;
 	`
-	if _, err := duckDB.Exec(createTableQuery); err != nil {
-		return fmt.Errorf("failed to create audit log table: %w", err)
+	if _, err := duckDB.Exec(createSchemaQuery); err != nil {
+		return fmt.Errorf("failed to create audit log schema: %w", err)
 	}
 
 	return nil

@@ -86,7 +86,7 @@ func main() {
 	// Serve both on the same port
 	mux := http.NewServeMux()
 	mux.Handle("/mcp-http", httpServer)
-	mux.Handle("/", sseServer) // SSE server matches /mcp/sse and /mcp/message internally
+	mux.Handle("/mcp/", sseServer) // SSE server handles /mcp/sse and /mcp/message
 
 	// REST API + Swagger UI
 	restHandler := &RESTHandler{}
