@@ -41,21 +41,29 @@ jobs:
 
           SSH="ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=10 root@$MAP_SERVER_HOST"
 
-          # Upload new binary (rsync uses delta transfer for faster uploads)
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key" safecast-mcp "root@$MAP_SERVER_HOST:/root/safecast-mcp-server/safecast-mcp-new"
-
           # Write env file to server (uses localhost for database connection)
           ENV_FILE="MCP_BASE_URL=https://$MAP_SERVER_HOST/mcp"
           ENV_FILE="$ENV_FILE"$'\nDATABASE_URL=postgres://mcp_readonly:MBbZ9Zir1rqOvuZH2VevAkKbMAIQv@localhost:5432/safecast'
           ENV_FILE="$ENV_FILE"$'\nDUCKDB_PATH=/root/safecast-mcp-server/analytics.duckdb'
           echo "$ENV_FILE" | $SSH "cat > /root/safecast-mcp-server/.env"
 
-          # Replace binary and restart via systemd
-          $SSH "cd /root/safecast-mcp-server && \
-            rm -f safecast-mcp && \
-            mv safecast-mcp-new safecast-mcp && \
-            chmod +x safecast-mcp && \
-            systemctl restart safecast-mcp"
+          # Stop the service
+          echo "Stopping safecast-mcp service..."
+          $SSH "systemctl stop safecast-mcp"
+
+          # Upload new binary via rsync
+          echo "Uploading new binary..."
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" safecast-mcp "root@$MAP_SERVER_HOST:/root/safecast-mcp-server/safecast-mcp"
+
+          # Set executable permissions
+          $SSH "chmod +x /root/safecast-mcp-server/safecast-mcp"
+
+          # Restart the service
+          echo "Starting safecast-mcp service..."
+          $SSH "systemctl start safecast-mcp"
+
+          # Check service status
+          $SSH "systemctl status safecast-mcp --no-pager"
 
           # Configure Apache proxy for REST API and Swagger
           $SSH "
