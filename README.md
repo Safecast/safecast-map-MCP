@@ -542,46 +542,49 @@ GOOS=linux GOARCH=amd64 go build -o safecast-mcp ./cmd/mcp-server/
 
 ## Deployment
 
-Pushing to `main` automatically builds and deploys to the VPS via GitHub Actions (only when Go source files, `go.mod`/`go.sum`, or the workflow itself change).
+Pushing to `main` automatically builds and deploys to **simplemap.safecast.org** (the map server) via GitHub Actions (only when Go source files, `go.mod`/`go.sum`, or the workflow itself change).
+
+> **Note**: The MCP server runs on the same server as the database for optimal performance (localhost connections eliminate network latency). See [MIGRATION_TO_MAP_SERVER.md](MIGRATION_TO_MAP_SERVER.md) for migration details.
 
 ### How it works
 
 1. GitHub Action cross-compiles the Go binary
-2. Uploads it to the VPS via rsync
-3. Restarts the MCP server
-4. Runs a health check against the `/mcp-http` endpoint
+2. Uploads it to the map server via rsync
+3. Creates `.env` file with localhost database connection
+4. Restarts the MCP server via systemd
+5. Configures Apache proxy for `/mcp-http`, `/docs/`, and `/api/` endpoints
+6. Runs a health check against the `/mcp-http` endpoint
 
 ### Setting up secrets
 
-The GitHub Action requires three repository secrets. Go to **Settings** > **Secrets and variables** > **Actions** and add:
+The GitHub Action requires two repository secrets. Go to **Settings** > **Secrets and variables** > **Actions** and add:
 
 | Secret | Description |
 |--------|-------------|
-| `SSH_PRIVATE_KEY` | SSH private key with access to the VPS (ed25519 format) |
-| `VPS_HOST` | VPS hostname (e.g. `vps-01.safecast.jp`) |
-| `DATABASE_URL` | PostgreSQL connection string |
+| `SSH_PRIVATE_KEY` | SSH private key with access to the map server (ed25519 format) |
+| `MAP_SERVER_HOST` | Map server hostname: `simplemap.safecast.org` |
 
 To generate a deploy key:
 
 ```bash
-ssh-keygen -t ed25519 -C "github-deploy@safecast-mcp" -f ~/.ssh/safecast-deploy -N ""
+ssh-keygen -t ed25519 -C "github-deploy-mcp@simplemap" -f ~/.ssh/safecast-mcp-deploy -N ""
 ```
 
-Then add the public key to the VPS:
+Then add the public key to the map server:
 
 ```bash
-ssh-copy-id -i ~/.ssh/safecast-deploy.pub root@vps-01.safecast.jp
+ssh-copy-id -i ~/.ssh/safecast-mcp-deploy.pub root@simplemap.safecast.org
 ```
 
-And paste the contents of `~/.ssh/safecast-deploy` (the private key) as the `SSH_PRIVATE_KEY` secret in GitHub.
+And paste the contents of `~/.ssh/safecast-mcp-deploy` (the private key) as the `SSH_PRIVATE_KEY` secret in GitHub.
 
 ### Manual deploy
 
 ```bash
 cd go
 GOOS=linux GOARCH=amd64 go build -o safecast-mcp ./cmd/mcp-server/
-scp safecast-mcp root@vps-01.safecast.jp:/root/safecast-mcp-server/
-ssh root@vps-01.safecast.jp "systemctl restart safecast-mcp"
+scp safecast-mcp root@simplemap.safecast.org:/root/safecast-mcp-server/
+ssh root@simplemap.safecast.org "systemctl restart safecast-mcp"
 ```
 
 ## Contributing

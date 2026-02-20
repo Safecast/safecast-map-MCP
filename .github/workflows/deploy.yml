@@ -28,29 +28,25 @@ jobs:
         working-directory: go
         run: GOOS=linux GOARCH=amd64 go build -o ../safecast-mcp ./cmd/mcp-server/
 
-      - name: Deploy to VPS
+      - name: Deploy to Map Server
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MAP_SERVER_HOST: ${{ secrets.MAP_SERVER_HOST }}
         run: |
           # Set up SSH
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "$MAP_SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          SSH="ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=10 root@$VPS_HOST"
+          SSH="ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=10 root@$MAP_SERVER_HOST"
 
           # Upload new binary (rsync uses delta transfer for faster uploads)
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key" safecast-mcp "root@$VPS_HOST:/root/safecast-mcp-server/safecast-mcp-new"
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" safecast-mcp "root@$MAP_SERVER_HOST:/root/safecast-mcp-server/safecast-mcp-new"
 
-          # Write env file to server (avoids quoting issues with special chars in URLs)
-          ENV_FILE="MCP_BASE_URL=https://$VPS_HOST/mcp"
-          if [ -n "$DATABASE_URL" ]; then
-            ENV_FILE="$ENV_FILE
-          DATABASE_URL=$DATABASE_URL"
-          fi
+          # Write env file to server (uses localhost for database connection)
+          ENV_FILE="MCP_BASE_URL=https://$MAP_SERVER_HOST/mcp"
+          ENV_FILE="$ENV_FILE"$'\nDATABASE_URL=postgres://mcp_readonly:MBbZ9Zir1rqOvuZH2VevAkKbMAIQv@localhost:5432/safecast'
           ENV_FILE="$ENV_FILE"$'\nDUCKDB_PATH=/root/safecast-mcp-server/analytics.duckdb'
           echo "$ENV_FILE" | $SSH "cat > /root/safecast-mcp-server/.env"
 
@@ -127,7 +123,7 @@ jobs:
 
       - name: Health check
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
+          MAP_SERVER_HOST: ${{ secrets.MAP_SERVER_HOST }}
         run: |
           MAX_ATTEMPTS=5
           ATTEMPT=1
@@ -137,7 +133,7 @@ jobs:
               -X POST \
               -H "Content-Type: application/json" \
               -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ci","version":"1.0"}}}' \
-              "https://$VPS_HOST/mcp-http" \
+              "https://$MAP_SERVER_HOST/mcp-http" \
               --max-time 10)
             if [ "$RESPONSE" = "200" ]; then
               echo "Health check passed (HTTP 200)"
