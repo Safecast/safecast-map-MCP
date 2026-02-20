@@ -399,16 +399,35 @@ Open `http://localhost:3333/docs/` for the interactive Swagger UI.
 
 ## Connecting Claude to the MCP
 
-### Using the Deployed Server
+### Claude Code (CLI) - Recommended
 
-To connect Claude to the deployed Safecast MCP server:
+The fastest way to add the MCP server using Claude Code CLI:
+
+```bash
+# Add the production server
+claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
+
+# Or add with user scope (available in all projects)
+claude mcp add --transport http safecast --scope user https://simplemap.safecast.org/mcp-http
+```
+
+**Management commands:**
+```bash
+claude mcp list              # List all configured servers
+claude mcp get safecast      # View server details
+claude mcp remove safecast   # Remove if needed
+```
+
+### Claude.ai (Web Interface)
+
+To connect via the web interface:
 
 1. Open [claude.ai](https://claude.ai) in your browser
 2. Go to **Settings** (bottom-left) > **Integrations**
 3. Click **Add more** > **Add custom integration**
 4. Enter a name (e.g. "Safecast") and paste the Streamable HTTP endpoint URL:
    ```
-   https://vps-01.safecast.jp/mcp-http
+   https://simplemap.safecast.org/mcp-http
    ```
 5. Click **Save** — the Safecast tools will now be available in your conversations
 
