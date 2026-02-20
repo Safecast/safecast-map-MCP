@@ -10,12 +10,13 @@ import (
 // handleTracks handles GET /api/tracks
 //
 // @Summary     Browse bGeigie measurement tracks
-// @Description Lists bGeigie Import tracks (bulk radiation measurement drives). Each track represents measurements from a single bGeigie session. Can filter by year and optionally month.
+// @Description Lists bGeigie Import tracks (bulk radiation measurement drives). Each track represents measurements from a single bGeigie session. Can filter by year, month, and detector/device name.
 // @Tags        historical
 // @Produce     json
-// @Param       year  query  integer false "Filter by year (2000–2100)"
-// @Param       month query  integer false "Filter by month (1–12, requires year)"
-// @Param       limit query  integer false "Maximum number of results (1 to 50000)" default(50)
+// @Param       year     query  integer false "Filter by year (2000–2100)"
+// @Param       month    query  integer false "Filter by month (1–12, requires year)"
+// @Param       detector query  string  false "Filter by detector/device name (e.g., 'bGeigieZen', 'bGeigie', 'Pointcast'). Partial match supported."
+// @Param       limit    query  integer false "Maximum number of results (1 to 50000)" default(50)
 // @Success     200 {object} map[string]interface{} "Track list with count and filter metadata"
 // @Failure     400 {object} map[string]string "Invalid parameters"
 // @Router      /tracks [get]
@@ -60,6 +61,19 @@ func (h *RESTHandler) handleTracks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	detector := q.Get("detector")
+
+	// If detector filter is specified, use database (API doesn't support detector filtering)
+	if detector != "" {
+		if !dbAvailable() {
+			writeError(w, http.StatusServiceUnavailable, "Detector filtering requires database access")
+			return
+		}
+		result, err := listTracksDB(r.Context(), year, month, detector, limit)
+		serveMCPResult(w, result, err)
+		return
+	}
+
 	// Mirror routing logic from handleListTracks: use API for recent/no-year queries.
 	currentYear := time.Now().Year()
 	if year == 0 || year >= currentYear-1 {
@@ -68,7 +82,7 @@ func (h *RESTHandler) handleTracks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if dbAvailable() {
-		result, err := listTracksDB(r.Context(), year, month, limit)
+		result, err := listTracksDB(r.Context(), year, month, "", limit)
 		serveMCPResult(w, result, err)
 	} else {
 		result, err := listTracksAPI(r.Context(), year, month, limit)
