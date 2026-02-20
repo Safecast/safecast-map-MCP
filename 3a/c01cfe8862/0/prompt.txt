@@ -1,0 +1,9 @@
+Would moving the MCP server to the map server speedup the queries?
+
+---
+
+Yes, let do that.
+
+---
+
+Please do those steps for me
