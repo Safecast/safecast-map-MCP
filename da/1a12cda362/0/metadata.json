@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "da1a12cda362",
+  "session_id": "a851941e-91ed-4706-a4e2-39177a334681",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-20T04:34:42.957889492Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".env",
+    ".github/workflows/deploy.yml",
+    "MIGRATION_TO_MAP_SERVER.md",
+    "README.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "063ac31d-f297-475a-b9a3-838d9b99f533",
+  "checkpoint_transcript_start": 311,
+  "transcript_lines_at_start": 311,
+  "token_usage": {
+    "input_tokens": 138,
+    "cache_creation_tokens": 40187,
+    "cache_read_tokens": 1602742,
+    "output_tokens": 47,
+    "api_call_count": 15
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-20T04:34:42.853151523Z",
+    "agent_lines": 0,
+    "human_added": 73,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 74,
+    "agent_percentage": 0
+  }
+}
