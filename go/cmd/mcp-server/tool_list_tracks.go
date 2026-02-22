@@ -22,6 +22,9 @@ var listTracksToolDef = mcp.NewTool("list_tracks",
 	mcp.WithString("detector",
 		mcp.Description("Filter by detector/device name (e.g., 'bGeigieZen', 'bGeigie', 'Pointcast'). Partial match supported."),
 	),
+	mcp.WithString("username",
+		mcp.Description("Filter by uploader username. Partial match supported."),
+	),
 	mcp.WithNumber("limit",
 		mcp.Description("Maximum number of results to return (default: 50, max: 50000)"),
 		mcp.Min(1), mcp.Max(50000),
@@ -34,6 +37,7 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	year := req.GetInt("year", 0)
 	month := req.GetInt("month", 0)
 	detector := req.GetString("detector", "")
+	username := req.GetString("username", "")
 	limit := req.GetInt("limit", 50)
 
 	if month != 0 && year == 0 {
@@ -49,12 +53,12 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError("Limit must be between 1 and 50000"), nil
 	}
 
-	// If detector filter is specified, use database (API doesn't support detector filtering)
-	if detector != "" {
+	// If detector or username filter is specified, use database (API doesn't support these filters)
+	if detector != "" || username != "" {
 		if !dbAvailable() {
-			return mcp.NewToolResultError("Detector filtering requires database access"), nil
+			return mcp.NewToolResultError("Detector/username filtering requires database access"), nil
 		}
-		return listTracksDB(ctx, year, month, detector, limit)
+		return listTracksDB(ctx, year, month, detector, username, limit)
 	}
 
 	// Use API for latest data (no year) or recent years to ensure consistency with web UI
@@ -66,12 +70,12 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	if dbAvailable() {
-		return listTracksDB(ctx, year, month, detector, limit)
+		return listTracksDB(ctx, year, month, detector, username, limit)
 	}
 	return listTracksAPI(ctx, year, month, limit)
 }
 
-func listTracksDB(ctx context.Context, year, month int, detector string, limit int) (*mcp.CallToolResult, error) {
+func listTracksDB(ctx context.Context, year, month int, detector, username string, limit int) (*mcp.CallToolResult, error) {
 	query := `SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size,
 			u.created_at, u.source, u.source_id, u.recording_date,
 			u.detector, u.username,
@@ -105,6 +109,12 @@ func listTracksDB(ctx context.Context, year, month int, detector string, limit i
 		argIdx++
 	}
 
+	if username != "" {
+		query += fmt.Sprintf(" AND (u.username ILIKE $%d OR usr.username ILIKE $%d)", argIdx, argIdx)
+		args = append(args, "%"+username+"%")
+		argIdx++
+	}
+
 	query += " ORDER BY recording_date DESC"
 	query += fmt.Sprintf(" LIMIT $%d", argIdx)
 	args = append(args, limit)
@@ -115,7 +125,9 @@ func listTracksDB(ctx context.Context, year, month int, detector string, limit i
 	}
 
 	// Get total count (with same filters)
-	countQuery := `SELECT count(*) AS total FROM uploads WHERE 1=1`
+	countQuery := `SELECT count(*) AS total FROM uploads u
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
+		WHERE 1=1`
 	countArgs := []any{}
 	countArgIdx := 1
 	if year != 0 {
@@ -136,6 +148,11 @@ func listTracksDB(ctx context.Context, year, month int, detector string, limit i
 	if detector != "" {
 		countQuery += fmt.Sprintf(" AND detector ILIKE $%d", countArgIdx)
 		countArgs = append(countArgs, "%"+detector+"%")
+		countArgIdx++
+	}
+	if username != "" {
+		countQuery += fmt.Sprintf(" AND (u.username ILIKE $%d OR usr.username ILIKE $%d)", countArgIdx, countArgIdx)
+		countArgs = append(countArgs, "%"+username+"%")
 	}
 	countRow, _ := queryRow(ctx, countQuery, countArgs...)
 	total := 0
@@ -185,6 +202,7 @@ func listTracksDB(ctx context.Context, year, month int, detector string, limit i
 			"year":     nilIfZero(year),
 			"month":    nilIfZero(month),
 			"detector": nilIfEmpty(detector),
+			"username": nilIfEmpty(username),
 		},
 		"tracks": tracks,
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",

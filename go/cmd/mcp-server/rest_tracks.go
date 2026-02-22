@@ -69,7 +69,7 @@ func (h *RESTHandler) handleTracks(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusServiceUnavailable, "Detector filtering requires database access")
 			return
 		}
-		result, err := listTracksDB(r.Context(), year, month, detector, limit)
+		result, err := listTracksDB(r.Context(), year, month, detector, "", limit)
 		serveMCPResult(w, result, err)
 		return
 	}
@@ -82,7 +82,7 @@ func (h *RESTHandler) handleTracks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if dbAvailable() {
-		result, err := listTracksDB(r.Context(), year, month, "", limit)
+		result, err := listTracksDB(r.Context(), year, month, "", "", limit)
 		serveMCPResult(w, result, err)
 	} else {
 		result, err := listTracksAPI(r.Context(), year, month, limit)
