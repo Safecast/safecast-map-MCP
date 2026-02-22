@@ -1,5 +1,12 @@
 # Migration: MCP Server to Map Server
 
+**Status:** ✅ COMPLETED
+**Date Completed:** 2026-02-22
+**Current Endpoint:** https://simplemap.safecast.org/mcp-http
+**Note:** This migration has been successfully completed. The MCP server now runs on the map server with localhost database connections, providing 30-60% faster query performance.
+
+---
+
 ## Overview
 
 This document guides the migration of the MCP server from `vps-01.safecast.jp` to `simplemap.safecast.org` (the map server).
