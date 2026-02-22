@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "2dbf93a12ac7",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    ".github/workflows/deploy.yml",
+    "MIGRATION_TO_MAP_SERVER.md",
+    "README.md",
+    "docs/CLOUDFRONT_DEPLOYMENT.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2d/bf93a12ac7/0/metadata.json",
+      "transcript": "/2d/bf93a12ac7/0/full.jsonl",
+      "context": "/2d/bf93a12ac7/0/context.md",
+      "content_hash": "/2d/bf93a12ac7/0/content_hash.txt",
+      "prompt": "/2d/bf93a12ac7/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 312,
+    "cache_creation_tokens": 73708,
+    "cache_read_tokens": 2451851,
+    "output_tokens": 73,
+    "api_call_count": 38
+  }
+}
