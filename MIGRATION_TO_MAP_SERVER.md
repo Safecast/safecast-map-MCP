@@ -18,19 +18,23 @@ This document guides the migration of the MCP server from `vps-01.safecast.jp` t
 
 ## Prerequisites
 
-- SSH access to `simplemap.safecast.org` as root
+- SSH access to the map server at `65.108.24.131` as root
 - GitHub repository access to update secrets
 - SSH private key for deployment
+
+**⚠️ IMPORTANT:** The domain `simplemap.safecast.org` uses CloudFront CDN for web traffic. All SSH connections must use the server's IP address `65.108.24.131` directly, as CloudFront only handles HTTP/HTTPS (ports 80/443), not SSH (port 22).
 
 ## Migration Steps
 
 ### 1. Prepare the Map Server
 
-SSH into the map server:
+SSH into the map server (use IP address, not domain):
 
 ```bash
-ssh root@simplemap.safecast.org
+ssh root@65.108.24.131
 ```
+
+**Why IP?** CloudFront (the CDN in front of simplemap.safecast.org) only handles HTTP/HTTPS traffic. SSH must go directly to the server IP.
 
 Create the MCP server directory:
 
@@ -126,8 +130,10 @@ Update or create these secrets:
 
 | Secret | Old Value | New Value |
 |--------|-----------|-----------|
-| `MAP_SERVER_HOST` | *(new)* | `simplemap.safecast.org` |
+| `MAP_SERVER_HOST` | *(new)* | `65.108.24.131` (IP address, not domain) |
 | `SSH_PRIVATE_KEY` | *(keep existing)* | *(same key or generate new one)* |
+
+**⚠️ CRITICAL:** Use `65.108.24.131` (IP address) for `MAP_SERVER_HOST`, **not** `simplemap.safecast.org`. The domain uses CloudFront CDN which doesn't forward SSH traffic.
 
 **Note**: The old `VPS_HOST` and `DATABASE_URL` secrets are no longer needed by the workflow (DATABASE_URL is now hardcoded to localhost in the workflow).
 
@@ -139,8 +145,8 @@ If you want a fresh deploy key specifically for the map server:
 # On your local machine
 ssh-keygen -t ed25519 -C "github-deploy-mcp@simplemap" -f ~/.ssh/safecast-mcp-deploy -N ""
 
-# Copy public key to map server
-ssh-copy-id -i ~/.ssh/safecast-mcp-deploy.pub root@simplemap.safecast.org
+# Copy public key to map server (use IP, not domain)
+ssh-copy-id -i ~/.ssh/safecast-mcp-deploy.pub root@65.108.24.131
 
 # Add private key to GitHub secrets
 cat ~/.ssh/safecast-mcp-deploy  # Copy this to SSH_PRIVATE_KEY secret
@@ -169,10 +175,10 @@ The workflow will:
 
 ### 6. Verify Deployment
 
-After deployment, verify the service is running:
+After deployment, verify the service is running (use IP for SSH):
 
 ```bash
-ssh root@simplemap.safecast.org
+ssh root@65.108.24.131
 
 # Check service status
 systemctl status safecast-mcp

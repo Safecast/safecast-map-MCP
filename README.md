@@ -563,6 +563,8 @@ GOOS=linux GOARCH=amd64 go build -o safecast-mcp ./cmd/mcp-server/
 
 Pushing to `main` automatically builds and deploys to **simplemap.safecast.org** (the map server) via GitHub Actions (only when Go source files, `go.mod`/`go.sum`, or the workflow itself change).
 
+> **Important**: The domain uses CloudFront CDN. SSH deployment must use the server IP (65.108.24.131), not the domain name. See [CloudFront Deployment Guide](docs/CLOUDFRONT_DEPLOYMENT.md) for details.
+
 > **Note**: The MCP server runs on the same server as the database for optimal performance (localhost connections eliminate network latency). See [MIGRATION_TO_MAP_SERVER.md](MIGRATION_TO_MAP_SERVER.md) for migration details.
 
 ### How it works
@@ -581,7 +583,9 @@ The GitHub Action requires two repository secrets. Go to **Settings** > **Secret
 | Secret | Description |
 |--------|-------------|
 | `SSH_PRIVATE_KEY` | SSH private key with access to the map server (ed25519 format) |
-| `MAP_SERVER_HOST` | Map server hostname: `simplemap.safecast.org` |
+| `MAP_SERVER_HOST` | Map server IP address: **`65.108.24.131`** (use IP, not domain) |
+
+**⚠️ CRITICAL:** Use the IP address `65.108.24.131` for `MAP_SERVER_HOST`, **not** `simplemap.safecast.org`. The domain uses CloudFront CDN which doesn't handle SSH traffic.
 
 To generate a deploy key:
 
@@ -589,22 +593,26 @@ To generate a deploy key:
 ssh-keygen -t ed25519 -C "github-deploy-mcp@simplemap" -f ~/.ssh/safecast-mcp-deploy -N ""
 ```
 
-Then add the public key to the map server:
+Then add the public key to the map server (use IP address):
 
 ```bash
-ssh-copy-id -i ~/.ssh/safecast-mcp-deploy.pub root@simplemap.safecast.org
+ssh-copy-id -i ~/.ssh/safecast-mcp-deploy.pub root@65.108.24.131
 ```
 
 And paste the contents of `~/.ssh/safecast-mcp-deploy` (the private key) as the `SSH_PRIVATE_KEY` secret in GitHub.
 
 ### Manual deploy
 
+**⚠️ IMPORTANT:** The domain `simplemap.safecast.org` uses CloudFront CDN, which only handles HTTP/HTTPS traffic. For SSH/SCP deployment, you **must use the server IP address** (65.108.24.131), not the domain name.
+
 ```bash
 cd go
 GOOS=linux GOARCH=amd64 go build -o safecast-mcp ./cmd/mcp-server/
-scp safecast-mcp root@simplemap.safecast.org:/root/safecast-mcp-server/
-ssh root@simplemap.safecast.org "systemctl restart safecast-mcp"
+scp safecast-mcp root@65.108.24.131:/root/safecast-mcp-server/
+ssh root@65.108.24.131 "systemctl restart safecast-mcp"
 ```
+
+**Why IP address?** CloudFront operates on ports 80/443 (HTTP/HTTPS) and doesn't forward SSH traffic (port 22). When you SSH to the domain name, it tries to connect to CloudFront's servers, not the actual server.
 
 ## Contributing
 
