@@ -79,7 +79,7 @@ func listTracksDB(ctx context.Context, year, month int, detector, username strin
 	query := `SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size,
 			u.created_at, u.source, u.source_id, u.recording_date,
 			u.detector, u.username,
-			u.internal_user_id, usr.username AS internal_username, usr.email AS uploader_email, usr.name AS uploader_name
+			u.internal_user_id, usr.username AS internal_username, usr.email AS uploader_email
 		FROM uploads u
 		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
 		WHERE 1=1`
@@ -110,7 +110,7 @@ func listTracksDB(ctx context.Context, year, month int, detector, username strin
 	}
 
 	if username != "" {
-		query += fmt.Sprintf(" AND (u.username ILIKE $%d OR usr.username ILIKE $%d OR usr.email ILIKE $%d OR usr.name ILIKE $%d)", argIdx, argIdx, argIdx, argIdx)
+		query += fmt.Sprintf(" AND (u.username ILIKE $%d OR usr.username ILIKE $%d OR usr.email ILIKE $%d)", argIdx, argIdx, argIdx)
 		args = append(args, "%"+username+"%")
 		argIdx++
 	}
@@ -151,7 +151,7 @@ func listTracksDB(ctx context.Context, year, month int, detector, username strin
 		countArgIdx++
 	}
 	if username != "" {
-		countQuery += fmt.Sprintf(" AND (u.username ILIKE $%d OR usr.username ILIKE $%d OR usr.email ILIKE $%d OR usr.name ILIKE $%d)", countArgIdx, countArgIdx, countArgIdx, countArgIdx)
+		countQuery += fmt.Sprintf(" AND (u.username ILIKE $%d OR usr.username ILIKE $%d OR usr.email ILIKE $%d)", countArgIdx, countArgIdx, countArgIdx)
 		countArgs = append(countArgs, "%"+username+"%")
 	}
 	countRow, _ := queryRow(ctx, countQuery, countArgs...)
