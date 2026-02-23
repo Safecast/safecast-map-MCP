@@ -7,8 +7,8 @@
 // @contact.url     https://safecast.org
 // @license.name    CC0 1.0 Universal
 // @license.url     https://creativecommons.org/publicdomain/zero/1.0/
-// @host            vps-01.safecast.jp
-// @BasePath        /api
+// @host            simplemap.safecast.org
+// @BasePath        /api/mcp
 // @schemes         https http
 //
 // @tag.name        historical

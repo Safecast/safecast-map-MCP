@@ -1,5 +1,5 @@
-basePath: /api
-host: vps-01.safecast.jp
+basePath: /api/mcp
+host: simplemap.safecast.org
 info:
   contact:
     name: Safecast
@@ -502,7 +502,7 @@ paths:
     get:
       description: Lists bGeigie Import tracks (bulk radiation measurement drives).
         Each track represents measurements from a single bGeigie session. Can filter
-        by year and optionally month.
+        by year, month, and detector/device name.
       parameters:
       - description: Filter by year (2000–2100)
         in: query
@@ -512,6 +512,11 @@ paths:
         in: query
         name: month
         type: integer
+      - description: Filter by detector/device name (e.g., 'bGeigieZen', 'bGeigie',
+          'Pointcast'). Partial match supported.
+        in: query
+        name: detector
+        type: string
       - default: 50
         description: Maximum number of results (1 to 50000)
         in: query

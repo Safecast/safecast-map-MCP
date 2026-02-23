@@ -716,7 +716,7 @@ const docTemplate = `{
         },
         "/tracks": {
             "get": {
-                "description": "Lists bGeigie Import tracks (bulk radiation measurement drives). Each track represents measurements from a single bGeigie session. Can filter by year and optionally month.",
+                "description": "Lists bGeigie Import tracks (bulk radiation measurement drives). Each track represents measurements from a single bGeigie session. Can filter by year, month, and detector/device name.",
                 "produces": [
                     "application/json"
                 ],
@@ -735,6 +735,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Filter by month (1–12, requires year)",
                         "name": "month",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by detector/device name (e.g., 'bGeigieZen', 'bGeigie', 'Pointcast'). Partial match supported.",
+                        "name": "detector",
                         "in": "query"
                     },
                     {
@@ -789,8 +795,8 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "vps-01.safecast.jp",
-	BasePath:         "/api",
+	Host:             "simplemap.safecast.org",
+	BasePath:         "/api/mcp",
 	Schemes:          []string{"https", "http"},
 	Title:            "Safecast API",
 	Description:      "REST access to the Safecast radiation monitoring dataset — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed and read-only. Powered by PostgreSQL+PostGIS with a Safecast REST API fallback.",

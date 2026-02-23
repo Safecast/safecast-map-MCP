@@ -17,8 +17,8 @@
         },
         "version": "1.0"
     },
-    "host": "vps-01.safecast.jp",
-    "basePath": "/api",
+    "host": "simplemap.safecast.org",
+    "basePath": "/api/mcp",
     "paths": {
         "/area": {
             "get": {
@@ -714,7 +714,7 @@
         },
         "/tracks": {
             "get": {
-                "description": "Lists bGeigie Import tracks (bulk radiation measurement drives). Each track represents measurements from a single bGeigie session. Can filter by year and optionally month.",
+                "description": "Lists bGeigie Import tracks (bulk radiation measurement drives). Each track represents measurements from a single bGeigie session. Can filter by year, month, and detector/device name.",
                 "produces": [
                     "application/json"
                 ],
@@ -733,6 +733,12 @@
                         "type": "integer",
                         "description": "Filter by month (1–12, requires year)",
                         "name": "month",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by detector/device name (e.g., 'bGeigieZen', 'bGeigie', 'Pointcast'). Partial match supported.",
+                        "name": "detector",
                         "in": "query"
                     },
                     {
