@@ -8,7 +8,7 @@ import (
 )
 
 var getTrackToolDef = mcp.NewTool("get_track",
-	mcp.WithDescription("Retrieve all radiation measurements recorded during a specific track/journey. Use list_tracks to find available track IDs first. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
+	mcp.WithDescription("Retrieve all radiation measurements recorded during a specific track/journey. Use list_tracks to find available track IDs first. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. When referencing or linking to track data, ALWAYS use https://simplemap.safecast.org as the base URL — NEVER use api.safecast.org, which does not host track data."),
 	mcp.WithString("track_id",
 		mcp.Description("Track identifier (bGeigie import ID or track ID)"),
 		mcp.Required(),
