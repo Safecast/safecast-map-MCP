@@ -5,8 +5,8 @@
     ],
     "swagger": "2.0",
     "info": {
-        "description": "REST access to the Safecast radiation monitoring dataset — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed and read-only. Powered by PostgreSQL+PostGIS with a Safecast REST API fallback.",
-        "title": "Safecast API",
+        "description": "REST access to the Safecast radiation monitoring dataset via simplemap.safecast.org — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed and read-only. Powered by PostgreSQL+PostGIS.",
+        "title": "Safecast Map API",
         "contact": {
             "name": "Safecast",
             "url": "https://safecast.org"

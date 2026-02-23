@@ -4,13 +4,13 @@ info:
   contact:
     name: Safecast
     url: https://safecast.org
-  description: REST access to the Safecast radiation monitoring dataset — 200M+ measurements
-    from citizen scientists worldwide. All data is CC0-licensed and read-only. Powered
-    by PostgreSQL+PostGIS with a Safecast REST API fallback.
+  description: REST access to the Safecast radiation monitoring dataset via simplemap.safecast.org
+    — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed
+    and read-only. Powered by PostgreSQL+PostGIS.
   license:
     name: CC0 1.0 Universal
     url: https://creativecommons.org/publicdomain/zero/1.0/
-  title: Safecast API
+  title: Safecast Map API
   version: "1.0"
 paths:
   /area:

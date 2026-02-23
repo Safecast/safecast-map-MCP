@@ -1,8 +1,8 @@
 // Package main provides the Safecast MCP server with an optional REST API layer.
 //
-// @title           Safecast API
+// @title           Safecast Map API
 // @version         1.0
-// @description     REST access to the Safecast radiation monitoring dataset — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed and read-only. Powered by PostgreSQL+PostGIS with a Safecast REST API fallback.
+// @description     REST access to the Safecast radiation monitoring dataset via simplemap.safecast.org — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed and read-only. Powered by PostgreSQL+PostGIS.
 // @contact.name    Safecast
 // @contact.url     https://safecast.org
 // @license.name    CC0 1.0 Universal
