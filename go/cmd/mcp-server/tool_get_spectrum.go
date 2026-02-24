@@ -89,6 +89,7 @@ func getSpectrumDB(ctx context.Context, markerID int) (*mcp.CallToolResult, erro
 			"captured_at": row["captured_at"],
 			"track_id":    row["trackid"],
 		},
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
@@ -125,6 +126,7 @@ func getSpectrumAPI(ctx context.Context, markerID int) (*mcp.CallToolResult, err
 			"source_format":  spectrum["sourceFormat"],
 			"filename":       spectrum["filename"],
 		},
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 

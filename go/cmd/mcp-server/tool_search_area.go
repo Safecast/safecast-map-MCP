@@ -154,6 +154,7 @@ func searchAreaDB(ctx context.Context, minLat, maxLat, minLon, maxLon float64, l
 			"max_lon": maxLon,
 		},
 		"measurements": measurements,
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
@@ -187,6 +188,7 @@ func searchAreaAPI(ctx context.Context, minLat, maxLat, minLon, maxLon float64, 
 			"max_lon": maxLon,
 		},
 		"measurements": normalized,
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 

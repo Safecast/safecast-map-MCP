@@ -130,6 +130,7 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    measurements,
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
@@ -177,6 +178,7 @@ func getTrackAPI(ctx context.Context, trackIDStr string, fromID, toID, limit int
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    normalized,
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 

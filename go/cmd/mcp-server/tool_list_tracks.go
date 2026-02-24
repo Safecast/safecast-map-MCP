@@ -205,6 +205,7 @@ func listTracksDB(ctx context.Context, year, month int, detector, username strin
 			"username": nilIfEmpty(username),
 		},
 		"tracks": tracks,
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
@@ -264,6 +265,7 @@ func listTracksAPI(ctx context.Context, year, month, limit int) (*mcp.CallToolRe
 			"month": nilIfZero(month),
 		},
 		"tracks": tracks,
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
