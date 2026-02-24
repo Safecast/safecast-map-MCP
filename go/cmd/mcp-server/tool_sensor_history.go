@@ -180,7 +180,7 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 		"measurements": measurements,
 		"table_used": realtimeTable,
 		"available_tables": availableTables,
-		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements.",
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
