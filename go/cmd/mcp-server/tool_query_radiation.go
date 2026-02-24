@@ -66,7 +66,19 @@ func queryRadiationDB(ctx context.Context, lat, lon, radiusM float64, limit int)
 	// Use a bounding box pre-filter (&&) to hit the geometry spatial index first,
 	// then refine with ST_DWithin on geography for precise meter-based distance.
 	// Without the bbox filter, the geography cast bypasses the index → full table scan → timeout.
+	//
+	// PERFORMANCE: Use a subquery to filter and sort BEFORE joining to uploads/users.
+	// This limits the join to only N rows instead of joining 90k+ rows then sorting.
 	query := `
+		WITH top_markers AS (
+			SELECT m.id, m.doserate, m.date, m.lat, m.lon,
+				m.device_id, m.altitude, m.detector, m.trackid, m.has_spectrum, m.geom
+			FROM markers m
+			WHERE m.geom && ST_Expand(ST_SetSRID(ST_MakePoint($2, $1), 4326), $3 / 111000.0)
+			  AND ST_DWithin(m.geom::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
+			ORDER BY m.date DESC
+			LIMIT $4
+		)
 		SELECT m.id, m.doserate AS value, 'µSv/h' AS unit,
 			to_timestamp(m.date) AS captured_at,
 			m.lat AS latitude, m.lon AS longitude,
@@ -74,13 +86,10 @@ func queryRadiationDB(ctx context.Context, lat, lon, radiusM float64, limit int)
 			m.trackid, m.has_spectrum,
 			ST_Distance(m.geom::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) AS distance_m,
 			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
-		FROM markers m
+		FROM top_markers m
 		LEFT JOIN uploads u ON u.track_id = m.trackid
 		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
-		WHERE m.geom && ST_Expand(ST_SetSRID(ST_MakePoint($2, $1), 4326), $3 / 111000.0)
-		  AND ST_DWithin(m.geom::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
-		ORDER BY m.date DESC
-		LIMIT $4`
+		ORDER BY m.date DESC`
 
 	rows, err := queryRows(ctx, query, lat, lon, radiusM, limit)
 	if err != nil {
