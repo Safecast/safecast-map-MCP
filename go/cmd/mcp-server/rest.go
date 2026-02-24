@@ -28,8 +28,8 @@ import (
 	"net/http"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	_ "github.com/your-org/safecast-mcp-server/cmd/mcp-server/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
+	_ "github.com/your-org/safecast-mcp-server/cmd/mcp-server/docs"
 )
 
 //go:embed static/favicon.ico
@@ -50,7 +50,7 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/radiation", h.handleRadiation)
 	mux.HandleFunc("/api/area", h.handleArea)
 	mux.HandleFunc("/api/tracks", h.handleTracks)
-	mux.HandleFunc("/api/track/", h.handleTrack) // /api/track/{id}
+	mux.HandleFunc("/api/track/", h.handleTrack)   // /api/track/{id}
 	mux.HandleFunc("/api/device/", h.handleDevice) // /api/device/{id}/history
 
 	// Real-time sensors
@@ -64,6 +64,9 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 	// Reference / stats
 	mux.HandleFunc("/api/stats", h.handleStats)
 	mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
+
+	// GPT-optimised compact endpoints (for Custom GPT Actions)
+	h.RegisterGPT(mux)
 
 	// Favicon endpoints
 	mux.HandleFunc("/docs/favicon.ico", serveFavicon)

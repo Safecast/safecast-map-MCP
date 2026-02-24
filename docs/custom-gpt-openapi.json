@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Safecast Radiation API",
-        "description": "Access 200M+ radiation measurements from Safecast citizen scientists worldwide. Query real-time sensors, historical mobile survey data, spectroscopy records, and reference information. All data is CC0-licensed and read-only. IMPORTANT: always use limit=3 to 5 to avoid response size errors.",
+        "description": "Access 200M+ radiation measurements from Safecast citizen scientists worldwide. All data is CC0-licensed and read-only.",
         "version": "1.0.0"
     },
     "servers": [
@@ -11,11 +11,11 @@
         }
     ],
     "paths": {
-        "/radiation": {
+        "/gpt/radiation": {
             "get": {
                 "operationId": "queryRadiationNearLocation",
                 "summary": "Find radiation measurements near a location",
-                "description": "Returns historical bGeigie mobile measurements within a radius of the given coordinates. IMPORTANT: always use limit=3 to 5 maximum.",
+                "description": "Returns up to 5 recent radiation measurements near the given coordinates. Use for questions about radiation levels at a specific place.",
                 "parameters": [
                     {
                         "name": "lat",
@@ -43,66 +43,54 @@
                             "default": 1500
                         },
                         "description": "Search radius in meters (25-50000)"
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 5,
-                            "maximum": 5
-                        },
-                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Radiation measurements",
+                        "description": "Compact radiation measurements (max 5 results)",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "count": {
-                                            "type": "integer"
+                                        "n": {
+                                            "type": "integer",
+                                            "description": "Number of results returned"
                                         },
-                                        "source": {
-                                            "type": "string"
+                                        "total": {
+                                            "type": "integer",
+                                            "description": "Total available in area"
                                         },
-                                        "measurements": {
+                                        "src": {
+                                            "type": "string",
+                                            "description": "Data source (database or api)"
+                                        },
+                                        "items": {
                                             "type": "array",
                                             "items": {
                                                 "type": "object",
                                                 "properties": {
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "value": {
+                                                    "usvh": {
                                                         "type": "number",
-                                                        "description": "Dose rate in uSv/h"
+                                                        "description": "Dose rate in µSv/h"
                                                     },
-                                                    "captured_at": {
-                                                        "type": "string"
+                                                    "at": {
+                                                        "type": "string",
+                                                        "description": "Measurement timestamp (ISO 8601)"
                                                     },
-                                                    "location": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "lat": {
-                                                                "type": "number"
-                                                            },
-                                                            "lon": {
-                                                                "type": "number"
-                                                            }
-                                                        }
-                                                    },
-                                                    "device_id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "detector": {
-                                                        "type": "string"
-                                                    },
-                                                    "distance_m": {
+                                                    "lat": {
                                                         "type": "number"
+                                                    },
+                                                    "lon": {
+                                                        "type": "number"
+                                                    },
+                                                    "det": {
+                                                        "type": "string",
+                                                        "description": "Detector model"
+                                                    },
+                                                    "dist_m": {
+                                                        "type": "number",
+                                                        "description": "Distance from query point in meters"
                                                     }
                                                 }
                                             }
@@ -115,11 +103,11 @@
                 }
             }
         },
-        "/area": {
+        "/gpt/area": {
             "get": {
                 "operationId": "searchRadiationInArea",
                 "summary": "Find radiation measurements within a bounding box",
-                "description": "Returns historical bGeigie measurements inside a geographic rectangle. IMPORTANT: always use limit=5 maximum.",
+                "description": "Returns up to 5 radiation measurements inside a geographic rectangle. Use when the user specifies a region or country.",
                 "parameters": [
                     {
                         "name": "min_lat",
@@ -152,488 +140,40 @@
                         "schema": {
                             "type": "number"
                         }
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 5,
-                            "maximum": 5
-                        },
-                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Measurements in area",
+                        "description": "Compact measurements in area (max 5 results)",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "count": {
+                                        "n": {
                                             "type": "integer"
                                         },
-                                        "source": {
+                                        "src": {
                                             "type": "string"
                                         },
-                                        "measurements": {
+                                        "items": {
                                             "type": "array",
                                             "items": {
                                                 "type": "object",
                                                 "properties": {
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "value": {
+                                                    "usvh": {
                                                         "type": "number"
                                                     },
-                                                    "captured_at": {
+                                                    "at": {
                                                         "type": "string"
                                                     },
-                                                    "location": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "lat": {
-                                                                "type": "number"
-                                                            },
-                                                            "lon": {
-                                                                "type": "number"
-                                                            }
-                                                        }
-                                                    },
-                                                    "device_id": {
-                                                        "type": "integer"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/sensors": {
-            "get": {
-                "operationId": "listActiveSensors",
-                "summary": "Discover active fixed radiation sensors",
-                "description": "Lists active fixed sensors (Pointcast, Solarcast, bGeigieZen) with location and last reading. IMPORTANT: always use limit=5 maximum.",
-                "parameters": [
-                    {
-                        "name": "type",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "Sensor type (Pointcast, Solarcast, bGeigieZen)"
-                    },
-                    {
-                        "name": "min_lat",
-                        "in": "query",
-                        "schema": {
-                            "type": "number",
-                            "default": -90
-                        }
-                    },
-                    {
-                        "name": "max_lat",
-                        "in": "query",
-                        "schema": {
-                            "type": "number",
-                            "default": 90
-                        }
-                    },
-                    {
-                        "name": "min_lon",
-                        "in": "query",
-                        "schema": {
-                            "type": "number",
-                            "default": -180
-                        }
-                    },
-                    {
-                        "name": "max_lon",
-                        "in": "query",
-                        "schema": {
-                            "type": "number",
-                            "default": 180
-                        }
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 5,
-                            "maximum": 5
-                        },
-                        "description": "Max results. Must be 5 or fewer."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Active sensors",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "sensors": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "device_id": {
-                                                        "type": "string"
-                                                    },
-                                                    "type": {
-                                                        "type": "string"
-                                                    },
-                                                    "last_reading_at": {
-                                                        "type": "string"
-                                                    },
-                                                    "location": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "lat": {
-                                                                "type": "number"
-                                                            },
-                                                            "lon": {
-                                                                "type": "number"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/sensor/{id}/current": {
-            "get": {
-                "operationId": "getSensorCurrentReading",
-                "summary": "Get latest reading from a specific fixed sensor",
-                "description": "Returns the most recent radiation measurement from a fixed sensor. Use for real-time or current data from a known sensor ID.",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "Sensor device ID"
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 1,
-                            "maximum": 3
-                        },
-                        "description": "Number of recent readings. Use 1."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Latest sensor reading",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "device_id": {
-                                            "type": "string"
-                                        },
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "readings": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "value": {
-                                                        "type": "number",
-                                                        "description": "Dose rate in uSv/h"
-                                                    },
-                                                    "unit": {
-                                                        "type": "string"
-                                                    },
-                                                    "captured_at": {
-                                                        "type": "string"
-                                                    },
-                                                    "location": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "lat": {
-                                                                "type": "number"
-                                                            },
-                                                            "lon": {
-                                                                "type": "number"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/sensor/{id}/history": {
-            "get": {
-                "operationId": "getSensorHistory",
-                "summary": "Get time-series data from a fixed sensor",
-                "description": "Returns historical time-series radiation data from a specific fixed sensor. IMPORTANT: always use limit=5 maximum.",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "start_date",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "Start date YYYY-MM-DD"
-                    },
-                    {
-                        "name": "end_date",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "End date YYYY-MM-DD (default: today)"
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 5,
-                            "maximum": 5
-                        },
-                        "description": "Max results. Must be 5 or fewer."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Sensor time-series",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "device_id": {
-                                            "type": "string"
-                                        },
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "period": {
-                                            "type": "object",
-                                            "properties": {
-                                                "start": {
-                                                    "type": "string"
-                                                },
-                                                "end": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        },
-                                        "readings": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "value": {
+                                                    "lat": {
                                                         "type": "number"
                                                     },
-                                                    "captured_at": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/device/{id}/history": {
-            "get": {
-                "operationId": "getDeviceHistory",
-                "summary": "Get historical measurements from a mobile device",
-                "description": "Returns time-series radiation data from a bGeigie mobile survey device or fixed sensor. IMPORTANT: always use limit=5 maximum.",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "days",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 30
-                        },
-                        "description": "Days of history (1-365)"
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 5,
-                            "maximum": 5
-                        },
-                        "description": "Max results. Must be 5 or fewer."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Device measurement history",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "device_id": {
-                                            "type": "string"
-                                        },
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "measurements": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "value": {
+                                                    "lon": {
                                                         "type": "number"
                                                     },
-                                                    "captured_at": {
-                                                        "type": "string"
-                                                    },
-                                                    "location": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "lat": {
-                                                                "type": "number"
-                                                            },
-                                                            "lon": {
-                                                                "type": "number"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/tracks": {
-            "get": {
-                "operationId": "listMeasurementTracks",
-                "summary": "Browse bGeigie mobile survey tracks",
-                "description": "Lists bGeigie Import tracks (radiation measurement drives). IMPORTANT: always use limit=5 maximum.",
-                "parameters": [
-                    {
-                        "name": "year",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "month",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "detector",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 5,
-                            "maximum": 5
-                        },
-                        "description": "Max results. Must be 5 or fewer."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Track list",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "tracks": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "track_id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "measurement_count": {
-                                                        "type": "integer"
-                                                    },
-                                                    "created_at": {
-                                                        "type": "string"
-                                                    },
-                                                    "city": {
+                                                    "det": {
                                                         "type": "string"
                                                     }
                                                 }
@@ -647,87 +187,11 @@
                 }
             }
         },
-        "/track/{id}": {
-            "get": {
-                "operationId": "getTrackMeasurements",
-                "summary": "Get all measurements from a specific survey track",
-                "description": "Retrieves radiation measurements from a specific bGeigie drive. Use listMeasurementTracks to find track IDs first. IMPORTANT: always use limit=5 maximum.",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "Track ID (e.g. 8eh5m1)"
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 5,
-                            "maximum": 5
-                        },
-                        "description": "Max results. Must be 5 or fewer."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Track measurements",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "track_id": {
-                                            "type": "string"
-                                        },
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "measurements": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "value": {
-                                                        "type": "number"
-                                                    },
-                                                    "captured_at": {
-                                                        "type": "string"
-                                                    },
-                                                    "location": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "lat": {
-                                                                "type": "number"
-                                                            },
-                                                            "lon": {
-                                                                "type": "number"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/stats": {
+        "/gpt/stats": {
             "get": {
                 "operationId": "getRadiationStats",
-                "summary": "Get aggregate radiation statistics",
-                "description": "Returns aggregate radiation statistics grouped by year, month, or overall. Good for trends and overviews.",
+                "summary": "Get aggregate radiation statistics by year or overall",
+                "description": "Returns aggregate radiation statistics grouped by year or overall. Good for trends, overviews, and 'how much data does Safecast have' questions.",
                 "parameters": [
                     {
                         "name": "interval",
@@ -736,7 +200,6 @@
                             "type": "string",
                             "enum": [
                                 "year",
-                                "month",
                                 "overall"
                             ],
                             "default": "year"
@@ -808,8 +271,7 @@
                                 "background_levels",
                                 "isotopes"
                             ]
-                        },
-                        "description": "Topic to retrieve"
+                        }
                     }
                 ],
                 "responses": {
@@ -834,183 +296,6 @@
                                                 },
                                                 "description": {
                                                     "type": "string"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/spectra": {
-            "get": {
-                "operationId": "listGammaSpectra",
-                "summary": "Browse gamma spectroscopy records",
-                "description": "Returns spectroscopy metadata without channel data. IMPORTANT: always use limit=3 maximum.",
-                "parameters": [
-                    {
-                        "name": "min_lat",
-                        "in": "query",
-                        "schema": {
-                            "type": "number"
-                        }
-                    },
-                    {
-                        "name": "max_lat",
-                        "in": "query",
-                        "schema": {
-                            "type": "number"
-                        }
-                    },
-                    {
-                        "name": "min_lon",
-                        "in": "query",
-                        "schema": {
-                            "type": "number"
-                        }
-                    },
-                    {
-                        "name": "max_lon",
-                        "in": "query",
-                        "schema": {
-                            "type": "number"
-                        }
-                    },
-                    {
-                        "name": "source_format",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "File format (spe, csv)"
-                    },
-                    {
-                        "name": "device_model",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 3,
-                            "maximum": 3
-                        },
-                        "description": "Max results. Must be 3 or fewer."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Spectroscopy records",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "spectra": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "spectrum_id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "marker_id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "filename": {
-                                                        "type": "string"
-                                                    },
-                                                    "source_format": {
-                                                        "type": "string"
-                                                    },
-                                                    "device_model": {
-                                                        "type": "string"
-                                                    },
-                                                    "channel_count": {
-                                                        "type": "integer"
-                                                    },
-                                                    "created_at": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/spectrum/{marker_id}": {
-            "get": {
-                "operationId": "getGammaSpectrum",
-                "summary": "Get full gamma spectroscopy channel data",
-                "description": "Returns complete gamma spectroscopy data including all channel counts. Use listGammaSpectra first to find marker IDs.",
-                "parameters": [
-                    {
-                        "name": "marker_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Full spectroscopy data",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "marker_id": {
-                                            "type": "integer"
-                                        },
-                                        "filename": {
-                                            "type": "string"
-                                        },
-                                        "device_model": {
-                                            "type": "string"
-                                        },
-                                        "channel_count": {
-                                            "type": "integer"
-                                        },
-                                        "energy_min_kev": {
-                                            "type": "number"
-                                        },
-                                        "energy_max_kev": {
-                                            "type": "number"
-                                        },
-                                        "live_time_sec": {
-                                            "type": "number"
-                                        },
-                                        "channels": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "integer"
-                                            }
-                                        },
-                                        "location": {
-                                            "type": "object",
-                                            "properties": {
-                                                "lat": {
-                                                    "type": "number"
-                                                },
-                                                "lon": {
-                                                    "type": "number"
                                                 }
                                             }
                                         }
