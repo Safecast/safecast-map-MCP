@@ -251,7 +251,8 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 		"count":        len(measurements),
 		"source":       "database",
 		"measurements": measurements,
-		"_ai_generated_note": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -319,7 +320,8 @@ func deviceHistoryAPI(ctx context.Context, deviceIDStr string, days, limit int) 
 		"total_available": totalAvailable,
 		"source":          "api",
 		"measurements":    measurements,
-		"_ai_generated_note": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
+		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	if ranges, ok := resp["ranges"].(map[string]any); ok {
