@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -154,8 +155,8 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 	for i, r := range rows {
 		// Fix incorrect unit: Geiger counters report in CPM (counts per minute), not CPS
 		unit := r["unit"]
-		if unitStr, ok := unit.(string); ok && unitStr == "CPS" {
-			unit = "CPM"
+		if unitStr, ok := unit.(string); ok {
+			unit = strings.ReplaceAll(strings.ReplaceAll(unitStr, "cps", "cpm"), "CPS", "CPM")
 		}
 
 		readings[i] = map[string]any{

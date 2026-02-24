@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -176,8 +177,8 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 	for _, r := range realtimeRows {
 		// Fix incorrect unit: Geiger counters report in CPM (counts per minute), not CPS
 		unit := r["unit"]
-		if unitStr, ok := unit.(string); ok && unitStr == "CPS" {
-			unit = "CPM"
+		if unitStr, ok := unit.(string); ok {
+			unit = strings.ReplaceAll(strings.ReplaceAll(unitStr, "cps", "cpm"), "CPS", "CPM")
 		}
 
 		measurement := map[string]any{
