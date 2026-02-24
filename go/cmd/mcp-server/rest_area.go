@@ -66,7 +66,7 @@ func (h *RESTHandler) handleArea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit := 100
+	limit := 5
 	if s := q.Get("limit"); s != "" {
 		var err error
 		limit, err = strconv.Atoi(s)
@@ -74,6 +74,9 @@ func (h *RESTHandler) handleArea(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "limit must be between 1 and 10000")
 			return
 		}
+	}
+	if limit > 10 {
+		limit = 10
 	}
 
 	if dbAvailable() {

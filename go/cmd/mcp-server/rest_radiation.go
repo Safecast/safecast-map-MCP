@@ -51,13 +51,17 @@ func (h *RESTHandler) handleRadiation(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	limit := 25
+	limit := 5
 	if s := q.Get("limit"); s != "" {
 		limit, err = strconv.Atoi(s)
 		if err != nil || limit < 1 || limit > 10000 {
 			writeError(w, http.StatusBadRequest, "limit must be between 1 and 10000")
 			return
 		}
+	}
+	// Hard cap for API consumers (e.g. Custom GPT) that can't handle large responses
+	if limit > 10 {
+		limit = 10
 	}
 
 	if dbAvailable() {

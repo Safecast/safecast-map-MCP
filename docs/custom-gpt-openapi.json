@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Safecast Radiation API",
-        "description": "Access 200M+ radiation measurements from Safecast citizen scientists worldwide. Query real-time sensors, historical mobile survey data, spectroscopy records, and reference information. All data is CC0-licensed and read-only.",
+        "description": "Access 200M+ radiation measurements from Safecast citizen scientists worldwide. Query real-time sensors, historical mobile survey data, spectroscopy records, and reference information. All data is CC0-licensed and read-only. IMPORTANT: always use limit=3 to 5 to avoid response size errors.",
         "version": "1.0.0"
     },
     "servers": [
@@ -15,7 +15,7 @@
             "get": {
                 "operationId": "queryRadiationNearLocation",
                 "summary": "Find radiation measurements near a location",
-                "description": "Returns historical bGeigie mobile measurements within a radius of the given coordinates, sorted by most recent. Use when the user asks about radiation levels at a specific place.",
+                "description": "Returns historical bGeigie mobile measurements within a radius of the given coordinates. IMPORTANT: always use limit=3 to 5 maximum.",
                 "parameters": [
                     {
                         "name": "lat",
@@ -42,16 +42,17 @@
                             "type": "number",
                             "default": 1500
                         },
-                        "description": "Search radius in meters (25–50000)"
+                        "description": "Search radius in meters (25-50000)"
                     },
                     {
                         "name": "limit",
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 25
+                            "default": 5,
+                            "maximum": 5
                         },
-                        "description": "Max results (1–10000)"
+                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
@@ -118,7 +119,7 @@
             "get": {
                 "operationId": "searchRadiationInArea",
                 "summary": "Find radiation measurements within a bounding box",
-                "description": "Returns historical bGeigie measurements inside a geographic rectangle. Use when the user specifies a region or country.",
+                "description": "Returns historical bGeigie measurements inside a geographic rectangle. IMPORTANT: always use limit=5 maximum.",
                 "parameters": [
                     {
                         "name": "min_lat",
@@ -157,8 +158,10 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 100
-                        }
+                            "default": 5,
+                            "maximum": 5
+                        },
+                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
@@ -218,7 +221,7 @@
             "get": {
                 "operationId": "listActiveSensors",
                 "summary": "Discover active fixed radiation sensors",
-                "description": "Lists active fixed sensors (Pointcast, Solarcast, bGeigieZen) with location and last reading. Use for 'what sensors are near X' queries.",
+                "description": "Lists active fixed sensors (Pointcast, Solarcast, bGeigieZen) with location and last reading. IMPORTANT: always use limit=5 maximum.",
                 "parameters": [
                     {
                         "name": "type",
@@ -265,8 +268,10 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 50
-                        }
+                            "default": 5,
+                            "maximum": 5
+                        },
+                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
@@ -336,8 +341,10 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 1
-                        }
+                            "default": 1,
+                            "maximum": 3
+                        },
+                        "description": "Number of recent readings. Use 1."
                     }
                 ],
                 "responses": {
@@ -395,7 +402,7 @@
             "get": {
                 "operationId": "getSensorHistory",
                 "summary": "Get time-series data from a fixed sensor",
-                "description": "Returns historical time-series radiation data from a specific fixed sensor over a date range.",
+                "description": "Returns historical time-series radiation data from a specific fixed sensor. IMPORTANT: always use limit=5 maximum.",
                 "parameters": [
                     {
                         "name": "id",
@@ -426,8 +433,10 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 200
-                        }
+                            "default": 5,
+                            "maximum": 5
+                        },
+                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
@@ -481,7 +490,7 @@
             "get": {
                 "operationId": "getDeviceHistory",
                 "summary": "Get historical measurements from a mobile device",
-                "description": "Returns time-series radiation data from a bGeigie mobile survey device or fixed sensor over recent days.",
+                "description": "Returns time-series radiation data from a bGeigie mobile survey device or fixed sensor. IMPORTANT: always use limit=5 maximum.",
                 "parameters": [
                     {
                         "name": "id",
@@ -498,15 +507,17 @@
                             "type": "integer",
                             "default": 30
                         },
-                        "description": "Days of history (1–365)"
+                        "description": "Days of history (1-365)"
                     },
                     {
                         "name": "limit",
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 200
-                        }
+                            "default": 5,
+                            "maximum": 5
+                        },
+                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
@@ -560,7 +571,7 @@
             "get": {
                 "operationId": "listMeasurementTracks",
                 "summary": "Browse bGeigie mobile survey tracks",
-                "description": "Lists bGeigie Import tracks (radiation measurement drives). Filter by year, month, or detector model.",
+                "description": "Lists bGeigie Import tracks (radiation measurement drives). IMPORTANT: always use limit=5 maximum.",
                 "parameters": [
                     {
                         "name": "year",
@@ -588,8 +599,10 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 50
-                        }
+                            "default": 5,
+                            "maximum": 5
+                        },
+                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
@@ -638,7 +651,7 @@
             "get": {
                 "operationId": "getTrackMeasurements",
                 "summary": "Get all measurements from a specific survey track",
-                "description": "Retrieves radiation measurements from a specific bGeigie drive. Use listMeasurementTracks to find track IDs first.",
+                "description": "Retrieves radiation measurements from a specific bGeigie drive. Use listMeasurementTracks to find track IDs first. IMPORTANT: always use limit=5 maximum.",
                 "parameters": [
                     {
                         "name": "id",
@@ -654,8 +667,10 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 200
-                        }
+                            "default": 5,
+                            "maximum": 5
+                        },
+                        "description": "Max results. Must be 5 or fewer."
                     }
                 ],
                 "responses": {
@@ -834,7 +849,7 @@
             "get": {
                 "operationId": "listGammaSpectra",
                 "summary": "Browse gamma spectroscopy records",
-                "description": "Returns spectroscopy metadata without channel data. Use getGammaSpectrum with a marker_id to get full channel data.",
+                "description": "Returns spectroscopy metadata without channel data. IMPORTANT: always use limit=3 maximum.",
                 "parameters": [
                     {
                         "name": "min_lat",
@@ -884,8 +899,10 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 50
-                        }
+                            "default": 3,
+                            "maximum": 3
+                        },
+                        "description": "Max results. Must be 3 or fewer."
                     }
                 ],
                 "responses": {
