@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // handleTracks handles GET /api/tracks
@@ -63,31 +62,23 @@ func (h *RESTHandler) handleTracks(w http.ResponseWriter, r *http.Request) {
 
 	detector := q.Get("detector")
 
-	// If detector filter is specified, use database (API doesn't support detector filtering)
-	if detector != "" {
-		if !dbAvailable() {
-			writeError(w, http.StatusServiceUnavailable, "Detector filtering requires database access")
-			return
-		}
+	// DB is always preferred — calling listTracksAPI would call simplemap.safecast.org/api/tracks
+	// which is this server itself, causing infinite recursion.
+	if dbAvailable() {
 		result, err := listTracksDB(r.Context(), year, month, detector, "", limit)
 		serveMCPResult(w, result, err)
 		return
 	}
 
-	// Mirror routing logic from handleListTracks: use API for recent/no-year queries.
-	currentYear := time.Now().Year()
-	if year == 0 || year >= currentYear-1 {
-		result, err := listTracksAPI(r.Context(), year, month, limit)
-		serveMCPResult(w, result, err)
+	// No DB: detector filter impossible without DB
+	if detector != "" {
+		writeError(w, http.StatusServiceUnavailable, "Detector filtering requires database access")
 		return
 	}
-	if dbAvailable() {
-		result, err := listTracksDB(r.Context(), year, month, "", "", limit)
-		serveMCPResult(w, result, err)
-	} else {
-		result, err := listTracksAPI(r.Context(), year, month, limit)
-		serveMCPResult(w, result, err)
-	}
+
+	// No DB: fall back to API (only valid for years before the MCP server existed as the backend)
+	result, err := listTracksAPI(r.Context(), year, month, limit)
+	serveMCPResult(w, result, err)
 }
 
 // handleTrack handles GET /api/track/{id}
@@ -156,4 +147,3 @@ func (h *RESTHandler) handleTrack(w http.ResponseWriter, r *http.Request) {
 		serveMCPResult(w, result, err)
 	}
 }
-

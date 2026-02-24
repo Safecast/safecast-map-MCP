@@ -53,25 +53,19 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError("Limit must be between 1 and 50000"), nil
 	}
 
-	// If detector or username filter is specified, use database (API doesn't support these filters)
-	if detector != "" || username != "" {
-		if !dbAvailable() {
-			return mcp.NewToolResultError("Detector/username filtering requires database access"), nil
-		}
-		return listTracksDB(ctx, year, month, detector, username, limit)
-	}
-
-	// Use API for latest data (no year) or recent years to ensure consistency with web UI
-	// and to avoid database replication lag. API also sorts by ID (upload order),
-	// which better matches "latest uploads" expectation than DB's recording_date sort.
-	currentYear := time.Now().Year()
-	if year == 0 || year >= currentYear-1 {
-		return listTracksAPI(ctx, year, month, limit)
-	}
-
+	// DB is always preferred — the API fallback calls simplemap.safecast.org/api/tracks
+	// which is this server itself, causing infinite recursion.
 	if dbAvailable() {
 		return listTracksDB(ctx, year, month, detector, username, limit)
 	}
+
+	// DB unavailable and filters require it
+	if detector != "" || username != "" {
+		return mcp.NewToolResultError("Detector/username filtering requires database access"), nil
+	}
+
+	// No DB: fall back to the upstream simplemap API for older years only.
+	// This path only works correctly when the server is not the simplemap backend itself.
 	return listTracksAPI(ctx, year, month, limit)
 }
 
@@ -204,8 +198,8 @@ func listTracksDB(ctx context.Context, year, month int, detector, username strin
 			"detector": nilIfEmpty(detector),
 			"username": nilIfEmpty(username),
 		},
-		"tracks": tracks,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner without personal pronouns (I, we), exclamations, or conversational phrases. State only objective facts and measurements.",
+		"tracks":             tracks,
+		"_ai_hint":           "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner without personal pronouns (I, we), exclamations, or conversational phrases. State only objective facts and measurements.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
@@ -264,8 +258,8 @@ func listTracksAPI(ctx context.Context, year, month, limit int) (*mcp.CallToolRe
 			"year":  nilIfZero(year),
 			"month": nilIfZero(month),
 		},
-		"tracks": tracks,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner without personal pronouns (I, we), exclamations, or conversational phrases. State only objective facts and measurements.",
+		"tracks":             tracks,
+		"_ai_hint":           "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner without personal pronouns (I, we), exclamations, or conversational phrases. State only objective facts and measurements.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
