@@ -2,7 +2,11 @@ module github.com/your-org/safecast-mcp-server
 
 go 1.25.7
 
-require github.com/mark3labs/mcp-go v0.43.2
+require (
+	github.com/mark3labs/mcp-go v0.43.2
+	github.com/swaggo/http-swagger v1.3.4
+	github.com/swaggo/swag v1.16.6
+)
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
@@ -19,8 +23,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/swaggo/files v1.0.1 // indirect
-	github.com/swaggo/http-swagger v1.3.4 // indirect
-	github.com/swaggo/swag v1.16.6 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/mod v0.27.0 // indirect
