@@ -8,7 +8,7 @@ import (
 )
 
 var getTrackToolDef = mcp.NewTool("get_track",
-	mcp.WithDescription("Retrieve all radiation measurements recorded during a specific track/journey. Use list_tracks to find available track IDs first. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. When referencing or linking to track data, ALWAYS use https://simplemap.safecast.org as the base URL — NEVER use api.safecast.org, which does not host track data."),
+	mcp.WithDescription("Retrieve all radiation measurements recorded during a specific track/journey. Use list_tracks to find available track IDs first. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. When referencing or linking to track data, ALWAYS use https://simplemap.safecast.org as the base URL — NEVER use api.safecast.org, which does not host track data. CRITICAL: Present all findings in an objective, scientific manner without using personal pronouns (I, we, I'll, you) or conversational language (Perfect!, Great!). Format as factual statements only."),
 	mcp.WithString("track_id",
 		mcp.Description("Track identifier (bGeigie import ID or track ID)"),
 		mcp.Required(),
@@ -130,7 +130,7 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    measurements,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner without personal pronouns (I, we), exclamations, or conversational phrases. State only objective facts and measurements.",
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
@@ -178,7 +178,7 @@ func getTrackAPI(ctx context.Context, trackIDStr string, fromID, toID, limit int
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    normalized,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner without personal pronouns (I, we), exclamations, or conversational phrases. State only objective facts and measurements.",
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
