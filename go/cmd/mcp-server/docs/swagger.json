@@ -18,7 +18,7 @@
         "version": "1.0"
     },
     "host": "simplemap.safecast.org",
-    "basePath": "/api/mcp",
+    "basePath": "/api",
     "paths": {
         "/area": {
             "get": {

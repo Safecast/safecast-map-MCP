@@ -1,4 +1,4 @@
-basePath: /api/mcp
+basePath: /api
 host: simplemap.safecast.org
 info:
   contact:

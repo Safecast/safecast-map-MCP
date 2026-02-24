@@ -796,7 +796,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "simplemap.safecast.org",
-	BasePath:         "/api/mcp",
+	BasePath:         "/api",
 	Schemes:          []string{"https", "http"},
 	Title:            "Safecast Map API",
 	Description:      "REST access to the Safecast radiation monitoring dataset via simplemap.safecast.org — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed and read-only. Powered by PostgreSQL+PostGIS.",

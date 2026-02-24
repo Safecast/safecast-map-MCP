@@ -8,7 +8,7 @@
 // @license.name    CC0 1.0 Universal
 // @license.url     https://creativecommons.org/publicdomain/zero/1.0/
 // @host            simplemap.safecast.org
-// @BasePath        /api/mcp
+// @BasePath        /api
 // @schemes         https http
 //
 // @tag.name        historical
