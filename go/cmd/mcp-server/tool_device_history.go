@@ -251,7 +251,7 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 		"count":        len(measurements),
 		"source":       "database",
 		"measurements": measurements,
-		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner without personal pronouns (I, we), exclamations, or conversational phrases. State only objective facts and measurements.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
@@ -320,7 +320,7 @@ func deviceHistoryAPI(ctx context.Context, deviceIDStr string, days, limit int) 
 		"total_available": totalAvailable,
 		"source":          "api",
 		"measurements":    measurements,
-		"_ai_hint": "IMPORTANT: When reporting radiation values in CPM, always state 'CPM (counts per minute)', NOT 'CPS (counts per second)'. CPM is the standard unit for Geiger counter measurements. Present data scientifically and objectively without personal commentary or opinions.",
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner without personal pronouns (I, we), exclamations, or conversational phrases. State only objective facts and measurements.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
