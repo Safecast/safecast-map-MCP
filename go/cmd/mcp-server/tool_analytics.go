@@ -81,7 +81,7 @@ func handleRadiationStats(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		// Note: 'postgres_db' is the name we attached it as in duckdb_client.go
 		query = `
 			SELECT
-				EXTRACT(YEAR FROM to_timestamp(date)) AS year,
+				EXTRACT(YEAR FROM to_timestamp(date)::TIMESTAMP) AS year,
 				COUNT(*) AS count,
 				AVG(doserate) AS avg_value,
 				MAX(doserate) AS max_value
@@ -94,7 +94,7 @@ func handleRadiationStats(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	case "month":
 		query = `
 			SELECT
-				DATE_TRUNC('month', to_timestamp(date)) AS month,
+				DATE_TRUNC('month', to_timestamp(date)::TIMESTAMP) AS month,
 				COUNT(*) AS count,
 				AVG(doserate) AS avg_value
 			FROM postgres_db.public.markers
