@@ -102,38 +102,51 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 
 	if sensorType != "" {
 		// Filter by sensor type
+		// FIXED: Get the actual latest reading per device, not grouped by lat/lon
+		// which causes stale data when sensors move or have multiple positions
 		query = fmt.Sprintf(`
-			SELECT DISTINCT 
-				device_id,
-				COALESCE(device_name, device_id) AS device_name,
-				COALESCE(transport, '') AS transport,
-				lat AS latitude,
-				lon AS longitude,
-				MAX(to_timestamp(measured_at)) AS last_reading_at
-			FROM %s
-			WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
-				AND (COALESCE(transport, '') ILIKE $5 OR COALESCE(device_name, '') ILIKE $5)
-			GROUP BY device_id, device_name, transport, lat, lon
-			ORDER BY last_reading_at DESC
-			LIMIT $6`, realtimeTable)
-		
+			SELECT
+				rm.device_id,
+				COALESCE(rm.device_name, rm.device_id) AS device_name,
+				COALESCE(rm.transport, '') AS transport,
+				rm.lat AS latitude,
+				rm.lon AS longitude,
+				to_timestamp(rm.measured_at) AS last_reading_at
+			FROM %s rm
+			INNER JOIN (
+				SELECT device_id, MAX(measured_at) as max_measured_at
+				FROM %s
+				WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
+					AND (COALESCE(transport, '') ILIKE $5 OR COALESCE(device_name, '') ILIKE $5)
+				GROUP BY device_id
+			) latest ON rm.device_id = latest.device_id AND rm.measured_at = latest.max_measured_at
+			WHERE rm.lat >= $1 AND rm.lat <= $2 AND rm.lon >= $3 AND rm.lon <= $4
+			ORDER BY rm.measured_at DESC
+			LIMIT $6`, realtimeTable, realtimeTable)
+
 		args = []interface{}{minLat, maxLat, minLon, maxLon, "%" + sensorType + "%", limit}
 	} else {
 		// No filter by type
+		// FIXED: Get the actual latest reading per device, not grouped by lat/lon
 		query = fmt.Sprintf(`
-			SELECT DISTINCT 
-				device_id,
-				COALESCE(device_name, device_id) AS device_name,
-				COALESCE(transport, '') AS transport,
-				lat AS latitude,
-				lon AS longitude,
-				MAX(to_timestamp(measured_at)) AS last_reading_at
-			FROM %s
-			WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
-			GROUP BY device_id, device_name, transport, lat, lon
-			ORDER BY last_reading_at DESC
-			LIMIT $5`, realtimeTable)
-		
+			SELECT
+				rm.device_id,
+				COALESCE(rm.device_name, rm.device_id) AS device_name,
+				COALESCE(rm.transport, '') AS transport,
+				rm.lat AS latitude,
+				rm.lon AS longitude,
+				to_timestamp(rm.measured_at) AS last_reading_at
+			FROM %s rm
+			INNER JOIN (
+				SELECT device_id, MAX(measured_at) as max_measured_at
+				FROM %s
+				WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
+				GROUP BY device_id
+			) latest ON rm.device_id = latest.device_id AND rm.measured_at = latest.max_measured_at
+			WHERE rm.lat >= $1 AND rm.lat <= $2 AND rm.lon >= $3 AND rm.lon <= $4
+			ORDER BY rm.measured_at DESC
+			LIMIT $5`, realtimeTable, realtimeTable)
+
 		args = []interface{}{minLat, maxLat, minLon, maxLon, limit}
 	}
 
