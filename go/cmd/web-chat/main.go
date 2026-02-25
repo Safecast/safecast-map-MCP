@@ -179,6 +179,13 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			r.Header.Get("CloudFront-Forwarded-Proto") != "" ||
 			r.Header.Get("X-Amz-Cf-Id") != ""
 
+		// Debug logging
+		log.Printf("Chat request: CloudFront=%v, Headers: CF-Country=%q, CF-Proto=%q, X-Amz-Cf-Id=%q",
+			isCloudfFront,
+			r.Header.Get("CloudFront-Viewer-Country"),
+			r.Header.Get("CloudFront-Forwarded-Proto"),
+			r.Header.Get("X-Amz-Cf-Id"))
+
 		// Chunked HTTP streaming — NDJSON, one JSON object per line, flushed immediately.
 		// CloudFront buffers responses, so we collect chunks and send all at once.
 		w.Header().Set("Content-Type", "application/x-ndjson")
