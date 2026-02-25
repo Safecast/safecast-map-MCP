@@ -74,57 +74,35 @@ jobs:
           $SSH "chmod +x /root/safecast-web-chat-server/safecast-web-chat"
 
           # Create systemd service for web-chat (idempotent)
-          $SSH "cat > /etc/systemd/system/safecast-web-chat.service" << 'EOF'
-[Unit]
-Description=Safecast Web Chat (MCP + Claude)
-After=network.target safecast-mcp.service
-Wants=safecast-mcp.service
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/root/safecast-web-chat-server
-ExecStart=/root/safecast-web-chat-server/safecast-web-chat
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=safecast-web-chat
-EnvironmentFile=/root/safecast-web-chat-server/.env
-NoNewPrivileges=true
-
-[Install]
-WantedBy=multi-user.target
-EOF
+          # Note: printf avoids YAML heredoc parsing issues with [Section] headers
+          printf '%s\n' \
+            '[Unit]' \
+            'Description=Safecast Web Chat (MCP + Claude)' \
+            'After=network.target safecast-mcp.service' \
+            'Wants=safecast-mcp.service' \
+            '' \
+            '[Service]' \
+            'Type=simple' \
+            'User=root' \
+            'WorkingDirectory=/root/safecast-web-chat-server' \
+            'ExecStart=/root/safecast-web-chat-server/safecast-web-chat' \
+            'Restart=always' \
+            'RestartSec=10' \
+            'StandardOutput=journal' \
+            'StandardError=journal' \
+            'SyslogIdentifier=safecast-web-chat' \
+            'EnvironmentFile=/root/safecast-web-chat-server/.env' \
+            'NoNewPrivileges=true' \
+            '' \
+            '[Install]' \
+            'WantedBy=multi-user.target' \
+            | $SSH "cat > /etc/systemd/system/safecast-web-chat.service"
           $SSH "systemctl daemon-reload && systemctl enable safecast-web-chat && systemctl restart safecast-web-chat"
 
-          # ── Nginx: add /assistant block if missing ──────────────────────────
-          $SSH "
-            NGINX_CONF=\$(grep -rl 'simplemap.safecast.org' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | head -1)
-            if [ -z \"\$NGINX_CONF\" ]; then
-              echo 'ERROR: Could not find Nginx config'; exit 1
-            fi
-            if grep -q 'safecast-web-chat\|location /assistant' \"\$NGINX_CONF\"; then
-              echo 'Nginx /assistant block already present, skipping.'
-            else
-              echo 'Adding /assistant block to Nginx config...'
-              sed -i '/# Map server/i\\
-    # Safecast Web Chat (MCP + Claude streaming)\\
-    location /assistant {\\
-        proxy_pass http://localhost:3334/;\\
-        proxy_http_version 1.1;\\
-        proxy_set_header Host \$host;\\
-        proxy_set_header X-Real-IP \$remote_addr;\\
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\\
-        proxy_set_header X-Forwarded-Proto \$scheme;\\
-        proxy_buffering off;\\
-        proxy_read_timeout 120s;\\
-        proxy_cache off;\\
-    }\\
-' \"\$NGINX_CONF\"
-              nginx -t && systemctl reload nginx && echo 'Nginx reloaded.' || echo 'Nginx config test failed!'
-            fi
-          "
+          # ── Nginx reload ────────────────────────────────────────────────────
+          # The /assistant/ location block is pre-configured in the server's
+          # nginx config. We just reload to pick up any changes.
+          $SSH "nginx -t && systemctl reload nginx && echo 'Nginx reloaded.'"
 
           sleep 5
           $SSH "systemctl status safecast-mcp safecast-web-chat --no-pager"
