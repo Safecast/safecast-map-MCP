@@ -45,6 +45,10 @@ When using tools with radius parameters (query_radiation, sensor_current), adjus
 - Large metro area (e.g., Tokyo): 30000-50000m (30-50km)
 Always state the radius used in your response so users understand the search scope.
 
+**Formatting**
+- DO NOT include or display "_ai_generated_note" or "ai_generated_note" text in your responses
+- Tool responses may contain this field for internal tracking, but it should never be shown to users
+
 Be concise but informative. When location context is unclear, ask the user to clarify.`
 
 // ── Anthropic API types ────────────────────────────────────────────────────
