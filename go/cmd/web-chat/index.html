@@ -258,31 +258,63 @@
     addMessage('user', text);
     const botBubble = addMessage('bot', '…thinking…', 'thinking');
 
+    let accumulated = '';
+
+    function finish() {
+      botBubble.classList.remove('thinking');
+      busy = false;
+      sendBtn.disabled = false;
+      msgEl.focus();
+    }
+
     fetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
-    })
-    .then(r => r.json())
-    .then(data => {
-      botBubble.classList.remove('thinking');
-      if (data.error) {
-        botBubble.classList.add('error');
-        botBubble.textContent = 'Error: ' + data.error;
-      } else {
-        botBubble.textContent = data.text;
+    }).then(response => {
+      const reader  = response.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = '';
+
+      function pump() {
+        return reader.read().then(({ done, value }) => {
+          if (done) { finish(); return; }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep incomplete last line
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const ev = JSON.parse(line);
+              if (ev.type === 'text') {
+                if (botBubble.classList.contains('thinking')) {
+                  botBubble.classList.remove('thinking');
+                  accumulated = '';
+                }
+                accumulated += ev.text;
+                botBubble.textContent = accumulated;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+              } else if (ev.type === 'done') {
+                finish();
+              } else if (ev.type === 'error') {
+                botBubble.classList.remove('thinking');
+                botBubble.classList.add('error');
+                botBubble.textContent = 'Error: ' + ev.error;
+                finish();
+              }
+            } catch { /* malformed line, skip */ }
+          }
+          return pump();
+        });
       }
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    })
-    .catch(err => {
+      return pump();
+    }).catch(err => {
       botBubble.classList.remove('thinking');
       botBubble.classList.add('error');
       botBubble.textContent = 'Connection error: ' + err.message;
-    })
-    .finally(() => {
-      busy = false;
-      sendBtn.disabled = false;
-      msgEl.focus();
+      finish();
     });
   }
 

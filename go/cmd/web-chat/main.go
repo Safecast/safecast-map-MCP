@@ -65,11 +65,21 @@ type anthropicResponse struct {
 	} `json:"error,omitempty"`
 }
 
-// ── Response types ─────────────────────────────────────────────────────────
+// ── Streaming helpers (chunked HTTP / NDJSON) ──────────────────────────────
 
-type chatResponse struct {
+type chunk struct {
+	Type  string `json:"type"`
 	Text  string `json:"text,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+
+func writeChunk(w http.ResponseWriter, c chunk) {
+	data, _ := json.Marshal(c)
+	data = append(data, '\n')
+	w.Write(data)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // ── Anthropic call ─────────────────────────────────────────────────────────
@@ -144,11 +154,12 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-
-		reply := func(text, errMsg string) {
-			json.NewEncoder(w).Encode(chatResponse{Text: text, Error: errMsg})
-		}
+		// Chunked HTTP streaming — NDJSON, one JSON object per line, flushed immediately.
+		// Works through CloudFront (no SSE text/event-stream needed).
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set("Transfer-Encoding", "chunked")
+		w.Header().Set("X-Accel-Buffering", "no") // nginx: don't buffer
+		w.Header().Set("Cache-Control", "no-cache, no-store")
 
 		ctx := r.Context()
 
@@ -157,15 +168,14 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			reply("", "invalid request: message required")
+			writeChunk(w, chunk{Type: "error", Error: "invalid request: message required"})
 			return
 		}
 
 		// ── Connect to MCP server ──────────────────────────────────────────
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
 		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			reply("", fmt.Sprintf("MCP connect: %v", err))
+			writeChunk(w, chunk{Type: "error", Error: fmt.Sprintf("MCP connect: %v", err)})
 			return
 		}
 		defer mc.Close()
@@ -176,15 +186,13 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				ClientInfo:      mcp.Implementation{Name: "safecast-web-chat", Version: "1.0.0"},
 			},
 		}); err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			reply("", fmt.Sprintf("MCP init: %v", err))
+			writeChunk(w, chunk{Type: "error", Error: fmt.Sprintf("MCP init: %v", err)})
 			return
 		}
 
 		toolsResult, err := mc.ListTools(ctx, mcp.ListToolsRequest{})
 		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			reply("", fmt.Sprintf("list tools: %v", err))
+			writeChunk(w, chunk{Type: "error", Error: fmt.Sprintf("list tools: %v", err)})
 			return
 		}
 		tools := mcpToolsToAnthropic(toolsResult.Tools)
@@ -194,13 +202,10 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			{Role: "user", Content: chatReq.Message},
 		}
 
-		var finalText string
-
 		for {
 			resp, err := callAnthropic(ctx, apiKey, model, messages, tools)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				reply("", err.Error())
+				writeChunk(w, chunk{Type: "error", Error: err.Error()})
 				return
 			}
 
@@ -213,7 +218,8 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			for _, block := range resp.Content {
 				switch block.Type {
 				case "text":
-					finalText += block.Text
+					// Stream each text block as it arrives
+					writeChunk(w, chunk{Type: "text", Text: block.Text})
 				case "tool_use":
 					toolUses = append(toolUses, block)
 				}
@@ -258,7 +264,7 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			})
 		}
 
-		reply(finalText, "")
+		writeChunk(w, chunk{Type: "done"})
 	}
 }
 
