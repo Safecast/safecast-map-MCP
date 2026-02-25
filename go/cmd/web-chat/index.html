@@ -36,7 +36,8 @@
       display: flex;
       flex-direction: column;
       height: 100%;
-      max-width: 820px;
+      width: 90%;
+      max-width: 1200px;
       margin: 0 auto;
     }
 
@@ -164,18 +165,23 @@
       background: rgba(255, 255, 255, 0.03);
       border-radius: 6px;
       overflow: hidden;
-      line-height: 0; /* Collapse spacing between rows */
     }
     .bubble table td {
       padding: 8px 12px;
       border: 1px solid var(--border);
-      line-height: 1.4; /* Restore line height inside cells */
+      line-height: 1.4;
+      word-wrap: break-word;
+      word-break: break-word;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+      -moz-hyphens: auto;
     }
     .bubble table tr:first-child td {
       background: rgba(255, 255, 255, 0.08);
       font-weight: 600;
     }
     .bubble table br { display: none; } /* Remove line breaks inside tables */
+    .bubble table + br { display: none; } /* Remove line breaks after tables */
 
     /* Markdown lists */
     .bubble ul {
@@ -386,8 +392,16 @@
     // Links: [text](url)
     html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
 
-    // Line breaks: preserve newlines
-    html = html.replace(/\n/g, '<br>');
+    // Line breaks: preserve newlines, but not after block elements or between table rows
+    html = html.replace(/\n/g, (match, offset, string) => {
+      // Don't add <br> after closing block tags
+      const beforeContext = string.substring(Math.max(0, offset - 50), offset);
+      if (/<\/(table|ul|h[123]|tr)>\s*$/.test(beforeContext)) return '';
+      // Don't add <br> before opening table rows
+      const afterContext = string.substring(offset + 1, Math.min(string.length, offset + 10));
+      if (/^\s*<tr>/.test(afterContext)) return '';
+      return '<br>';
+    });
 
     return html;
   }
