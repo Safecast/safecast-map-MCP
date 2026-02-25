@@ -55,12 +55,18 @@ jobs:
             | $SSH "cat > /root/safecast-mcp-server/.env"
 
           # ── .env for web-chat ───────────────────────────────────────────────
+          # Base64-encode the key to safely pass it through the SSH pipe
+          # (avoids shell quoting issues with special characters in the secret)
           $SSH "mkdir -p /root/safecast-web-chat-server"
-          printf '%s\n' \
-            "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" \
-            "MCP_URL=http://localhost:3333/mcp-http" \
-            "PORT=3334" \
-            | $SSH "cat > /root/safecast-web-chat-server/.env"
+          ENCODED_KEY=$(printf '%s' "$ANTHROPIC_API_KEY" | base64 -w0)
+          $SSH "
+            printf '%s\n' \
+              'MCP_URL=http://localhost:3333/mcp-http' \
+              'PORT=3334' \
+              > /root/safecast-web-chat-server/.env
+            echo \"ANTHROPIC_API_KEY=\$(echo '$ENCODED_KEY' | base64 -d)\" \
+              >> /root/safecast-web-chat-server/.env
+          "
 
           # ── Deploy mcp-server ───────────────────────────────────────────────
           $SSH "systemctl stop safecast-mcp"
@@ -105,7 +111,8 @@ jobs:
           $SSH "nginx -t && systemctl reload nginx && echo 'Nginx reloaded.'"
 
           sleep 5
-          $SSH "systemctl status safecast-mcp safecast-web-chat --no-pager"
+          # || true: systemctl status exits 3 for activating/restarting services
+          $SSH "systemctl status safecast-mcp safecast-web-chat --no-pager" || true
 
       - name: Health check (mcp-server)
         run: |
