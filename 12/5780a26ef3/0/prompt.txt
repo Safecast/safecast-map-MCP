@@ -1,0 +1,15 @@
+1- Now it seems we have a fied pixel width of the page,.Can you make the width of the withd just a procentage of the width and the text dynamyically adjusting?
+2- Still in a table to much  space between the header and the data, Can you make the space smaller?
+3- Text in tables, should be hythenaten not cut off
+
+---
+
+[Request interrupted by user]
+
+---
+
+screen schot of issues.
+
+---
+
+Did you commit and pushed the code?
