@@ -111,6 +111,45 @@
       transition: border-color .15s;
     }
     .bubble a:hover { border-bottom-color: var(--blue); }
+
+    /* Markdown headers */
+    .bubble h1 { font-size: 20px; font-weight: 700; margin: 16px 0 10px; color: var(--text); }
+    .bubble h2 { font-size: 18px; font-weight: 600; margin: 14px 0 8px; color: var(--text); }
+    .bubble h3 { font-size: 16px; font-weight: 600; margin: 12px 0 6px; color: var(--text); }
+
+    /* Markdown tables */
+    .bubble table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .bubble table td {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+    }
+    .bubble table tr:first-child td {
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: 600;
+    }
+
+    /* Markdown lists */
+    .bubble ul {
+      margin: 10px 0;
+      padding-left: 24px;
+      list-style-type: disc;
+    }
+    .bubble ul li { margin: 4px 0; }
+
+    /* Markdown horizontal rule */
+    .bubble hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
     .bubble.thinking {
       color: var(--muted);
       font-style: italic;
@@ -253,21 +292,57 @@
     msgEl.style.height = 'auto';
   }
 
-  // Convert basic markdown to HTML
+  // Convert markdown to HTML
   function markdownToHTML(text) {
-    return text
-      // Bold: **text** or __text__
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/__(.+?)__/g, '<strong>$1</strong>')
-      // Italic: *text* or _text_ (but not inside words)
-      .replace(/(?:^|\s)\*(.+?)\*(?:\s|$)/g, ' <em>$1</em> ')
-      .replace(/(?:^|\s)_(.+?)_(?:\s|$)/g, ' <em>$1</em> ')
-      // Inline code: `code`
-      .replace(/`(.+?)`/g, '<code>$1</code>')
-      // Links: [text](url)
-      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-      // Line breaks: preserve newlines
-      .replace(/\n/g, '<br>');
+    let html = text;
+
+    // Headers (must be at start of line)
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Horizontal rules
+    html = html.replace(/^---+$/gm, '<hr>');
+
+    // Tables (simple approach - detect table rows)
+    html = html.replace(/^\|(.+)\|$/gm, function(match, content) {
+      const cells = content.split('|').map(c => c.trim());
+      const cellTags = cells.map(c => {
+        // Check if this is a separator row (--|---|---)
+        if (/^:?-+:?$/.test(c)) return null;
+        return `<td>${c}</td>`;
+      }).filter(Boolean);
+      if (cellTags.length === 0) return '';
+      return '<tr>' + cellTags.join('') + '</tr>';
+    });
+    // Wrap table rows in table tags
+    html = html.replace(/(<tr>.+<\/tr>\n?)+/g, '<table>$&</table>');
+
+    // Unordered lists (lines starting with - or *)
+    html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.+<\/li>\n?)+/g, '<ul>$&</ul>');
+
+    // Ordered lists (lines starting with 1., 2., etc)
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+    // Bold: **text** or __text__
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+    // Italic: *text* or _text_
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+    // Inline code: `code`
+    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+
+    // Links: [text](url)
+    html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // Line breaks: preserve newlines
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
   }
 
   function addMessage(role, text, cls) {
