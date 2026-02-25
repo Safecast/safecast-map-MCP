@@ -59,6 +59,10 @@ Always state the radius used in your response so users understand the search sco
     | Device ID | Type | Location | Reading | Timestamp |
     |-----------|------|----------|---------|-----------|
     | [pointcast:10042](https://simplemap.safecast.org/?lat=37.72&lon=140.48&zoom=15) | Pointcast | 37.72°N, 140.48°E | 21 CPM (0.14 µSv/h) | Feb 25, 22:42 UTC |
+- When presenting track data or spectrum data from list_tracks, get_track, list_spectra, or get_spectrum:
+  * ALWAYS format as markdown tables, not bullet lists
+  * Make Track IDs clickable links to the map using the track's coordinates: [track_id](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=12)
+  * Use appropriate zoom level (12 for tracks, 15 for point measurements)
 
 Be concise but informative. When location context is unclear, ask the user to clarify.`
 
