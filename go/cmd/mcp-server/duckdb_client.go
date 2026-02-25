@@ -2,11 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
-    _ "github.com/marcboeker/go-duckdb"
+	_ "github.com/marcboeker/go-duckdb"
 )
 
 var duckDB *sql.DB
@@ -88,21 +89,21 @@ func LogQueryAsync(toolName string, params map[string]any, resultCount int, dura
     }
     
     go func() {
-        // Simple JSON serialization for params
-        // In a real app, use encoding/json, but here we just fmt for simplicity or simple map
-        // duckdb supports JSON type.
-        
-        // We'll simplisticly stringify map for now to avoid heavyweight imports in this snippet
-        // or actually, let's use a simple string representation
-        paramsStr := fmt.Sprintf("%v", params)
+        // Serialize params as proper JSON for DuckDB's JSON column type.
+        paramsJSON, err := json.Marshal(params)
+        if err != nil {
+            log.Printf("Error marshaling params to JSON: %v", err)
+            return
+        }
+        paramsStr := string(paramsJSON)
 
-        _, err := duckDB.Exec(`
+        _, execErr := duckDB.Exec(`
             INSERT INTO mcp_query_log (tool_name, params, result_count, duration_ms, client_info)
             VALUES (?, ?, ?, ?, ?)
         `, toolName, paramsStr, resultCount, float64(duration.Milliseconds()), clientInfo)
-        
-        if err != nil {
-            log.Printf("Error logging query to DuckDB: %v", err)
+
+        if execErr != nil {
+            log.Printf("Error logging query to DuckDB: %v", execErr)
         }
     }()
 }
