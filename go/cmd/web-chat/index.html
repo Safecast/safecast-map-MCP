@@ -54,31 +54,33 @@
       border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
       overflow: hidden;
+      cursor: pointer;
     }
     header .logo img {
       width: 100%; height: 100%;
       object-fit: contain;
     }
-    header .title-area { flex: 1; }
-    header h1 { font-size: 16px; font-weight: 600; }
+    header .title-area { flex: 1; cursor: pointer; }
+    header .title-area:hover h1 { color: var(--green); }
+    header h1 { font-size: 16px; font-weight: 600; transition: color .15s; }
     header p  { font-size: 12px; color: var(--muted); }
 
     /* Download button in header */
     #download-btn {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--green);
+      border: none;
       border-radius: 8px;
       padding: 6px 12px;
       font-size: 13px;
       cursor: pointer;
-      color: var(--text);
+      color: #fff;
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: border-color .15s, color .15s;
+      transition: background .15s;
     }
-    #download-btn:hover { border-color: var(--green); color: var(--green); }
-    #download-btn svg { width: 14px; height: 14px; fill: currentColor; }
+    #download-btn:hover { background: var(--green-dk); }
+    #download-btn svg { width: 14px; height: 14px; fill: #fff; }
 
     /* ── Messages ── */
     #messages {
@@ -275,8 +277,8 @@
 <body>
 <div id="app">
   <header>
-    <div class="logo"><img src="safecast-square-ct.png" alt="Safecast" /></div>
-    <div class="title-area">
+    <div class="logo" onclick="clearConversation()"><img src="safecast-square-ct.png" alt="Safecast" /></div>
+    <div class="title-area" onclick="clearConversation()">
       <h1>Safecast Radiation Assistant</h1>
       <p>Radiation data from the Safecast sensor network</p>
     </div>
@@ -481,6 +483,23 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  function clearConversation() {
+    // Clear conversation history
+    conversationHistory = [];
+
+    // Clear all messages
+    while (messagesEl.firstChild) {
+      messagesEl.removeChild(messagesEl.firstChild);
+    }
+
+    // Show intro again
+    messagesEl.appendChild(introEl);
+    introEl.style.display = 'block';
+
+    // Focus on input
+    msgEl.focus();
   }
 
   function sendMessage(text) {
