@@ -95,6 +95,22 @@
       word-break: break-word;
       line-height: 1.55;
     }
+    .bubble strong { font-weight: 600; }
+    .bubble em { font-style: italic; }
+    .bubble code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 13px;
+    }
+    .bubble a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color .15s;
+    }
+    .bubble a:hover { border-bottom-color: var(--blue); }
     .bubble.thinking {
       color: var(--muted);
       font-style: italic;
@@ -236,6 +252,23 @@
     msgEl.style.height = 'auto';
   }
 
+  // Convert basic markdown to HTML
+  function markdownToHTML(text) {
+    return text
+      // Bold: **text** or __text__
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.+?)__/g, '<strong>$1</strong>')
+      // Italic: *text* or _text_ (but not inside words)
+      .replace(/(?:^|\s)\*(.+?)\*(?:\s|$)/g, ' <em>$1</em> ')
+      .replace(/(?:^|\s)_(.+?)_(?:\s|$)/g, ' <em>$1</em> ')
+      // Inline code: `code`
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      // Links: [text](url)
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      // Line breaks: preserve newlines
+      .replace(/\n/g, '<br>');
+  }
+
   function addMessage(role, text, cls) {
     if (introEl) introEl.style.display = 'none';
 
@@ -248,7 +281,12 @@
 
     const bubble = document.createElement('div');
     bubble.className = `bubble ${cls || ''}`;
-    bubble.textContent = text;
+    // User messages are plain text, bot messages support markdown
+    if (role === 'bot') {
+      bubble.innerHTML = markdownToHTML(text);
+    } else {
+      bubble.textContent = text;
+    }
 
     msg.appendChild(avatar);
     msg.appendChild(bubble);
@@ -300,7 +338,7 @@
                   accumulated = '';
                 }
                 accumulated += ev.text;
-                botBubble.textContent = accumulated;
+                botBubble.innerHTML = markdownToHTML(accumulated);
                 messagesEl.scrollTop = messagesEl.scrollHeight;
               } else if (ev.type === 'done') {
                 finish();
