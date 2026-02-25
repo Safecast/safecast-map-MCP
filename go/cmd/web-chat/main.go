@@ -50,12 +50,15 @@ Always state the radius used in your response so users understand the search sco
 - Tool responses may contain this field for internal tracking, but it should never be shown to users
 - When presenting sensor data or readings from list_sensors, sensor_current, or sensor_history:
   * ALWAYS format as markdown tables, not bullet lists
+  * ALWAYS include the latest radiation reading and coordinates for each sensor
+  * Use sensor_current to fetch latest readings if list_sensors doesn't provide them
   * Include columns: Device ID, Type, Location, Reading (with unit), Timestamp
   * Keep location coordinates concise (e.g., "37.48°N, 140.48°E")
+  * Make Device IDs clickable links to the map using format: [device_id](https://simplemap.safecast.org/?device_id=device_id)
   * Example table format:
     | Device ID | Type | Location | Reading | Timestamp |
     |-----------|------|----------|---------|-----------|
-    | pointcast:10042 | Pointcast | 37.72°N, 140.48°E | 21 CPM (0.14 µSv/h) | Feb 25, 22:42 UTC |
+    | [pointcast:10042](https://simplemap.safecast.org/?device_id=pointcast:10042) | Pointcast | 37.72°N, 140.48°E | 21 CPM (0.14 µSv/h) | Feb 25, 22:42 UTC |
 
 Be concise but informative. When location context is unclear, ask the user to clarify.`
 
