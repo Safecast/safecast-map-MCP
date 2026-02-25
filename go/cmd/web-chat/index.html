@@ -317,6 +317,12 @@
           { role: 'user', content: text },
           { role: 'assistant', content: accumulated }
         );
+
+        // Keep only last 10 messages (5 exchanges) to prevent rate limits
+        const MAX_HISTORY = 10;
+        if (conversationHistory.length > MAX_HISTORY) {
+          conversationHistory = conversationHistory.slice(-MAX_HISTORY);
+        }
       }
     }
 
