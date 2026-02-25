@@ -154,6 +154,7 @@
     .bubble h1 { font-size: 20px; font-weight: 700; margin: 16px 0 10px; color: var(--text); }
     .bubble h2 { font-size: 18px; font-weight: 600; margin: 14px 0 8px; color: var(--text); }
     .bubble h3 { font-size: 16px; font-weight: 600; margin: 12px 0 6px; color: var(--text); }
+    .bubble h1 + br, .bubble h2 + br, .bubble h3 + br { display: none; } /* Remove line breaks after headers */
 
     /* Markdown tables */
     .bubble table {
@@ -181,6 +182,7 @@
       list-style-type: disc;
     }
     .bubble ul li { margin: 4px 0; }
+    .bubble ul br { display: none; } /* Remove line breaks inside lists */
 
     /* Markdown horizontal rule */
     .bubble hr {
