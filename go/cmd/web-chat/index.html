@@ -58,8 +58,26 @@
       width: 100%; height: 100%;
       object-fit: contain;
     }
+    header .title-area { flex: 1; }
     header h1 { font-size: 16px; font-weight: 600; }
     header p  { font-size: 12px; color: var(--muted); }
+
+    /* Download button in header */
+    #download-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color .15s, color .15s;
+    }
+    #download-btn:hover { border-color: var(--green); color: var(--green); }
+    #download-btn svg { width: 14px; height: 14px; fill: currentColor; }
 
     /* ── Messages ── */
     #messages {
@@ -75,10 +93,30 @@
       display: flex;
       gap: 10px;
       max-width: 100%;
+      position: relative;
     }
     .msg.user  { flex-direction: row-reverse; }
     .msg.user  .bubble { background: var(--user-bg); border: 1px solid var(--green); margin-left: 40px; }
-    .msg.bot   .bubble { background: var(--surface); border: 1px solid var(--border); margin-right: 40px; }
+    .msg.bot   .bubble { background: var(--surface); border: 1px solid var(--border); margin-right: 40px; position: relative; }
+
+    /* Copy button for bot messages */
+    .msg.bot .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--muted);
+      opacity: 0;
+      transition: opacity .15s, color .15s, border-color .15s;
+    }
+    .msg.bot:hover .copy-btn { opacity: 1; }
+    .msg.bot .copy-btn:hover { color: var(--green); border-color: var(--green); }
+    .msg.bot .copy-btn.copied { color: var(--green); opacity: 1; }
 
     .avatar {
       width: 30px; height: 30px; border-radius: 50%;
@@ -227,10 +265,14 @@
 <div id="app">
   <header>
     <div class="logo"><img src="safecast-square-ct.png" alt="Safecast" /></div>
-    <div>
+    <div class="title-area">
       <h1>Safecast Radiation Assistant</h1>
       <p>Radiation data from the Safecast sensor network</p>
     </div>
+    <button id="download-btn" onclick="downloadConversation()">
+      <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Download
+    </button>
   </header>
 
   <div id="messages">
@@ -360,6 +402,13 @@
     // User messages are plain text, bot messages support markdown
     if (role === 'bot') {
       bubble.innerHTML = markdownToHTML(text);
+
+      // Add copy button for bot messages
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.textContent = 'Copy';
+      copyBtn.onclick = () => copyMessage(text, copyBtn);
+      bubble.appendChild(copyBtn);
     } else {
       bubble.textContent = text;
     }
@@ -369,6 +418,50 @@
     messagesEl.appendChild(msg);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return bubble;
+  }
+
+  function copyMessage(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
+  }
+
+  function downloadConversation() {
+    if (conversationHistory.length === 0) {
+      alert('No conversation to download yet!');
+      return;
+    }
+
+    // Build markdown format
+    let markdown = '# Safecast Radiation Assistant Conversation\n\n';
+    markdown += `Date: ${new Date().toLocaleString()}\n\n`;
+    markdown += '---\n\n';
+
+    conversationHistory.forEach(msg => {
+      const role = msg.role === 'user' ? 'You' : 'Assistant';
+      markdown += `## ${role}\n\n`;
+      markdown += msg.content + '\n\n';
+      markdown += '---\n\n';
+    });
+
+    // Create download link
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `safecast-conversation-${new Date().toISOString().slice(0,10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function sendMessage(text) {
