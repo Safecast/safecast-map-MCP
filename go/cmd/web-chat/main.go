@@ -54,11 +54,11 @@ Always state the radius used in your response so users understand the search sco
   * Use sensor_current to fetch latest readings if list_sensors doesn't provide them
   * Include columns: Device ID, Type, Location, Reading (with unit), Timestamp
   * Keep location coordinates concise (e.g., "37.48°N, 140.48°E")
-  * Make Device IDs clickable links to the map using format: [device_id](https://simplemap.safecast.org/?device_id=device_id)
+  * Make Device IDs clickable links to the map using the sensor's coordinates: [device_id](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15)
   * Example table format:
     | Device ID | Type | Location | Reading | Timestamp |
     |-----------|------|----------|---------|-----------|
-    | [pointcast:10042](https://simplemap.safecast.org/?device_id=pointcast:10042) | Pointcast | 37.72°N, 140.48°E | 21 CPM (0.14 µSv/h) | Feb 25, 22:42 UTC |
+    | [pointcast:10042](https://simplemap.safecast.org/?lat=37.72&lon=140.48&zoom=15) | Pointcast | 37.72°N, 140.48°E | 21 CPM (0.14 µSv/h) | Feb 25, 22:42 UTC |
 
 Be concise but informative. When location context is unclear, ask the user to clarify.`
 
