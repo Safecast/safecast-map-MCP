@@ -117,7 +117,7 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 	
 	// Query the appropriate real-time table for time-series data
 	query := fmt.Sprintf(`
-		SELECT 
+		SELECT
 			id,
 			device_id,
 			COALESCE(device_name, device_id) AS device_name,
@@ -128,9 +128,10 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 			lon AS longitude,
 			COALESCE(transport, '') AS transport
 		FROM %s
-		WHERE device_id = $1 
-			AND measured_at >= $2 
+		WHERE device_id = $1
+			AND measured_at >= $2
 			AND measured_at <= $3
+			AND to_timestamp(measured_at) <= NOW()
 		ORDER BY measured_at ASC
 		LIMIT $4`, realtimeTable)
 
