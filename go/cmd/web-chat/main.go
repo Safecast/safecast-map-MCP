@@ -85,6 +85,22 @@ func writeChunk(w http.ResponseWriter, c chunk) {
 	}
 }
 
+// writeChunkBuffered either buffers the chunk or writes immediately
+func writeChunkBuffered(w http.ResponseWriter, c chunk, buffer *[]chunk, useBuffer bool) {
+	if useBuffer {
+		*buffer = append(*buffer, c)
+	} else {
+		writeChunk(w, c)
+	}
+}
+
+// flushBuffer writes all buffered chunks at once
+func flushBuffer(w http.ResponseWriter, buffer []chunk) {
+	for _, c := range buffer {
+		writeChunk(w, c)
+	}
+}
+
 // ── Anthropic call ─────────────────────────────────────────────────────────
 
 func callAnthropic(ctx context.Context, apiKey, model string, messages []anthropicMessage, tools []anthropicTool) (*anthropicResponse, error) {
@@ -157,12 +173,23 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			return
 		}
 
+		// Detect if request comes through CloudFront
+		// CloudFront adds these headers: CloudFront-Viewer-Country, CloudFront-Forwarded-Proto, etc.
+		isCloudfFront := r.Header.Get("CloudFront-Viewer-Country") != "" ||
+			r.Header.Get("CloudFront-Forwarded-Proto") != "" ||
+			r.Header.Get("X-Amz-Cf-Id") != ""
+
 		// Chunked HTTP streaming — NDJSON, one JSON object per line, flushed immediately.
-		// Works through CloudFront (no SSE text/event-stream needed).
+		// CloudFront buffers responses, so we collect chunks and send all at once.
 		w.Header().Set("Content-Type", "application/x-ndjson")
-		w.Header().Set("Transfer-Encoding", "chunked")
-		w.Header().Set("X-Accel-Buffering", "no") // nginx: don't buffer
+		if !isCloudfFront {
+			w.Header().Set("Transfer-Encoding", "chunked")
+			w.Header().Set("X-Accel-Buffering", "no") // nginx: don't buffer
+		}
 		w.Header().Set("Cache-Control", "no-cache, no-store")
+
+		// Buffer for CloudFront requests
+		var buffer []chunk
 
 		ctx := r.Context()
 
@@ -171,14 +198,20 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			writeChunk(w, chunk{Type: "error", Error: "invalid request: message required"})
+			writeChunkBuffered(w, chunk{Type: "error", Error: "invalid request: message required"}, &buffer, isCloudfFront)
+			if isCloudfFront {
+				flushBuffer(w, buffer)
+			}
 			return
 		}
 
 		// ── Connect to MCP server ──────────────────────────────────────────
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
 		if err != nil {
-			writeChunk(w, chunk{Type: "error", Error: fmt.Sprintf("MCP connect: %v", err)})
+			writeChunkBuffered(w, chunk{Type: "error", Error: fmt.Sprintf("MCP connect: %v", err)}, &buffer, isCloudfFront)
+			if isCloudfFront {
+				flushBuffer(w, buffer)
+			}
 			return
 		}
 		defer mc.Close()
@@ -189,13 +222,19 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				ClientInfo:      mcp.Implementation{Name: "safecast-web-chat", Version: "1.0.0"},
 			},
 		}); err != nil {
-			writeChunk(w, chunk{Type: "error", Error: fmt.Sprintf("MCP init: %v", err)})
+			writeChunkBuffered(w, chunk{Type: "error", Error: fmt.Sprintf("MCP init: %v", err)}, &buffer, isCloudfFront)
+			if isCloudfFront {
+				flushBuffer(w, buffer)
+			}
 			return
 		}
 
 		toolsResult, err := mc.ListTools(ctx, mcp.ListToolsRequest{})
 		if err != nil {
-			writeChunk(w, chunk{Type: "error", Error: fmt.Sprintf("list tools: %v", err)})
+			writeChunkBuffered(w, chunk{Type: "error", Error: fmt.Sprintf("list tools: %v", err)}, &buffer, isCloudfFront)
+			if isCloudfFront {
+				flushBuffer(w, buffer)
+			}
 			return
 		}
 		tools := mcpToolsToAnthropic(toolsResult.Tools)
@@ -208,7 +247,10 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		for {
 			resp, err := callAnthropic(ctx, apiKey, model, messages, tools)
 			if err != nil {
-				writeChunk(w, chunk{Type: "error", Error: err.Error()})
+				writeChunkBuffered(w, chunk{Type: "error", Error: err.Error()}, &buffer, isCloudfFront)
+				if isCloudfFront {
+					flushBuffer(w, buffer)
+				}
 				return
 			}
 
@@ -221,8 +263,8 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			for _, block := range resp.Content {
 				switch block.Type {
 				case "text":
-					// Stream each text block as it arrives
-					writeChunk(w, chunk{Type: "text", Text: block.Text})
+					// Stream each text block as it arrives (or buffer if CloudFront)
+					writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudfFront)
 				case "tool_use":
 					toolUses = append(toolUses, block)
 				}
@@ -267,7 +309,13 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			})
 		}
 
-		writeChunk(w, chunk{Type: "done"})
+		// Send final "done" chunk
+		writeChunkBuffered(w, chunk{Type: "done"}, &buffer, isCloudfFront)
+
+		// For CloudFront requests, flush all buffered chunks at once
+		if isCloudfFront {
+			flushBuffer(w, buffer)
+		}
 	}
 }
 
