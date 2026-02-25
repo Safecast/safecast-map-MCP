@@ -18,6 +18,9 @@ import (
 //go:embed index.html
 var indexHTML []byte
 
+//go:embed safecast-square-ct.png
+var logoPNG []byte
+
 const systemPrompt = `You are a helpful assistant for the Safecast radiation monitoring network.
 You have access to real-time radiation data from sensors around Japan and worldwide.
 Use the available tools to answer questions about radiation levels, sensor locations, and measurement history.
@@ -291,6 +294,11 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(indexHTML)
+	})
+	http.HandleFunc("/safecast-square-ct.png", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Write(logoPNG)
 	})
 	http.HandleFunc("/chat", handleChat(mcpURL, apiKey, model))
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
