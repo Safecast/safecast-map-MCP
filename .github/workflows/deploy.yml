@@ -58,7 +58,7 @@ jobs:
           # Read the Anthropic API key from OpenClaw's auth store on the server.
           # Avoids all SSH pipe / GitHub secret-masking issues entirely.
           $SSH "mkdir -p /root/safecast-web-chat-server"
-          $SSH "KEY=\$(grep -o 'sk-ant[^\"]*' /root/.openclaw/agents/main/agent/auth.json | head -1); printf 'MCP_URL=http://localhost:3333/mcp-http\nPORT=3334\nANTHROPIC_API_KEY=%s\n' \"\$KEY\" > /root/safecast-web-chat-server/.env; echo \"web-chat .env written (key: \${KEY:0:20}...)\"" 
+          $SSH "KEY=\$(grep -o 'sk-ant[^\"]*' /root/.openclaw/agents/main/agent/auth.json | head -1); printf 'MCP_URL=http://localhost:3333/mcp-http\nPORT=3334\nCLAUDE_MODEL=claude-haiku-4-5-20251001\nANTHROPIC_API_KEY=%s\n' \"\$KEY\" > /root/safecast-web-chat-server/.env; echo \"web-chat .env written (key: \${KEY:0:20}..., model: haiku-4-5)\""
 
           # ── Deploy mcp-server ───────────────────────────────────────────────
           $SSH "systemctl stop safecast-mcp"
