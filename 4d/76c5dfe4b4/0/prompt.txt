@@ -1,0 +1,10 @@
+Can you check why https://simplemap.safecast.org/assistant/ does not  show the last chan
+ges?
+
+---
+
+And the favicon did not show up. That is the same issue?
+
+---
+
+Still NG .. Also the Favicon is not there? A ClodFront issue?
