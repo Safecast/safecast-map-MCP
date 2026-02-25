@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "052c8105444f",
+  "session_id": "323f4137-d5cd-497a-ba7f-d2a1ce9660de",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-25T22:59:21.842378863Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "go/cmd/web-chat/index.html"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "67d88baf-573d-4966-872c-3895bdef5ad6",
+  "checkpoint_transcript_start": 119,
+  "transcript_lines_at_start": 119,
+  "token_usage": {
+    "input_tokens": 118,
+    "cache_creation_tokens": 18817,
+    "cache_read_tokens": 954387,
+    "output_tokens": 35,
+    "api_call_count": 14
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-25T22:59:21.764917855Z",
+    "agent_lines": 0,
+    "human_added": 117,
+    "human_modified": 10,
+    "human_removed": 0,
+    "total_committed": 117,
+    "agent_percentage": 0
+  }
+}
