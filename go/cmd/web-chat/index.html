@@ -225,6 +225,7 @@
   const sendBtn    = document.getElementById('send');
 
   let busy = false;
+  let conversationHistory = []; // Track conversation for context
 
   // Auto-grow textarea
   msgEl.addEventListener('input', () => {
@@ -304,17 +305,28 @@
 
     let accumulated = '';
 
-    function finish() {
+    function finish(success = true) {
       botBubble.classList.remove('thinking');
       busy = false;
       sendBtn.disabled = false;
       msgEl.focus();
+
+      // Update conversation history on successful completion
+      if (success && accumulated) {
+        conversationHistory.push(
+          { role: 'user', content: text },
+          { role: 'assistant', content: accumulated }
+        );
+      }
     }
 
     fetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({
+        message: text,
+        history: conversationHistory
+      }),
     }).then(response => {
       const reader  = response.body.getReader();
       const decoder = new TextDecoder();
@@ -346,7 +358,7 @@
                 botBubble.classList.remove('thinking');
                 botBubble.classList.add('error');
                 botBubble.textContent = 'Error: ' + ev.error;
-                finish();
+                finish(false);
               }
             } catch { /* malformed line, skip */ }
           }
@@ -358,7 +370,7 @@
       botBubble.classList.remove('thinking');
       botBubble.classList.add('error');
       botBubble.textContent = 'Connection error: ' + err.message;
-      finish();
+      finish(false);
     });
   }
 

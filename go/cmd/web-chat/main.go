@@ -212,7 +212,8 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		ctx := r.Context()
 
 		var chatReq struct {
-			Message string `json:"message"`
+			Message string              `json:"message"`
+			History []anthropicMessage `json:"history,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -258,9 +259,12 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		tools := mcpToolsToAnthropic(toolsResult.Tools)
 
 		// ── Agentic loop ───────────────────────────────────────────────────
-		messages := []anthropicMessage{
-			{Role: "user", Content: chatReq.Message},
+		// Start with conversation history (if provided) and append new user message
+		messages := chatReq.History
+		if messages == nil {
+			messages = []anthropicMessage{}
 		}
+		messages = append(messages, anthropicMessage{Role: "user", Content: chatReq.Message})
 
 		for {
 			resp, err := callAnthropic(ctx, apiKey, model, messages, tools)
