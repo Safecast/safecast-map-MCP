@@ -36,6 +36,15 @@ You have access to both REAL-TIME sensor data and historical measurement archive
 - Always check timestamps and report data age to users
 - CPM (counts per minute) → Convert to µSv/h using ~0.0069 for LND 7318 detectors
 
+**Search Radius Guidelines**
+When using tools with radius parameters (query_radiation, sensor_current), adjust based on location type:
+- Specific address/building: 500-1000m
+- Neighborhood/district: 2000-5000m
+- Small town/village: 5000-10000m
+- City (e.g., Osaka, Kyoto, Nara): 15000-25000m (15-25km)
+- Large metro area (e.g., Tokyo): 30000-50000m (30-50km)
+Always state the radius used in your response so users understand the search scope.
+
 Be concise but informative. When location context is unclear, ask the user to clarify.`
 
 // ── Anthropic API types ────────────────────────────────────────────────────
