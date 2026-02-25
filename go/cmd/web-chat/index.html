@@ -89,11 +89,12 @@
       word-break: break-word;
       line-height: 1.55;
     }
-    .bubble.streaming::after {
-      content: "▍";
-      animation: blink 1s step-end infinite;
+    .bubble.thinking {
+      color: var(--muted);
+      font-style: italic;
+      animation: pulse 1.2s ease-in-out infinite;
     }
-    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 
     .bubble.error { color: var(--err); border-color: var(--err); }
 
@@ -255,60 +256,34 @@
     sendBtn.disabled = true;
 
     addMessage('user', text);
-    const botBubble = addMessage('bot', '', 'streaming');
-
-    let accumulated = '';
+    const botBubble = addMessage('bot', '…thinking…', 'thinking');
 
     fetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
-    }).then(response => {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      function pump() {
-        return reader.read().then(({ done, value }) => {
-          if (done) { finish(); return; }
-          buffer += decoder.decode(value, { stream: true });
-
-          const lines = buffer.split('\n\n');
-          buffer = lines.pop(); // keep incomplete chunk
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            try {
-              const ev = JSON.parse(line.slice(6));
-              if (ev.type === 'text') {
-                accumulated += ev.text;
-                botBubble.textContent = accumulated;
-                messagesEl.scrollTop = messagesEl.scrollHeight;
-              } else if (ev.type === 'done') {
-                finish();
-              } else if (ev.type === 'error') {
-                botBubble.classList.add('error');
-                botBubble.textContent = 'Error: ' + ev.error;
-                finish();
-              }
-            } catch {}
-          }
-          return pump();
-        });
+    })
+    .then(r => r.json())
+    .then(data => {
+      botBubble.classList.remove('thinking');
+      if (data.error) {
+        botBubble.classList.add('error');
+        botBubble.textContent = 'Error: ' + data.error;
+      } else {
+        botBubble.textContent = data.text;
       }
-      return pump();
-    }).catch(err => {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    })
+    .catch(err => {
+      botBubble.classList.remove('thinking');
       botBubble.classList.add('error');
       botBubble.textContent = 'Connection error: ' + err.message;
-      finish();
-    });
-
-    function finish() {
-      botBubble.classList.remove('streaming');
+    })
+    .finally(() => {
       busy = false;
       sendBtn.disabled = false;
       msgEl.focus();
-    }
+    });
   }
 
   msgEl.focus();

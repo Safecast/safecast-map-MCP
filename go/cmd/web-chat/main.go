@@ -65,20 +65,11 @@ type anthropicResponse struct {
 	} `json:"error,omitempty"`
 }
 
-// ── SSE helpers ────────────────────────────────────────────────────────────
+// ── Response types ─────────────────────────────────────────────────────────
 
-type ssePayload struct {
-	Type  string `json:"type"`
+type chatResponse struct {
 	Text  string `json:"text,omitempty"`
 	Error string `json:"error,omitempty"`
-}
-
-func sendSSE(w http.ResponseWriter, p ssePayload) {
-	data, _ := json.Marshal(p)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
 }
 
 // ── Anthropic call ─────────────────────────────────────────────────────────
@@ -153,10 +144,11 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			return
 		}
 
-		// SSE headers — X-Accel-Buffering: no prevents nginx from buffering the stream
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("X-Accel-Buffering", "no")
+		w.Header().Set("Content-Type", "application/json")
+
+		reply := func(text, errMsg string) {
+			json.NewEncoder(w).Encode(chatResponse{Text: text, Error: errMsg})
+		}
 
 		ctx := r.Context()
 
@@ -164,14 +156,16 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			Message string `json:"message"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
-			sendSSE(w, ssePayload{Type: "error", Error: "invalid request: message required"})
+			w.WriteHeader(http.StatusBadRequest)
+			reply("", "invalid request: message required")
 			return
 		}
 
 		// ── Connect to MCP server ──────────────────────────────────────────
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
 		if err != nil {
-			sendSSE(w, ssePayload{Type: "error", Error: fmt.Sprintf("MCP connect: %v", err)})
+			w.WriteHeader(http.StatusServiceUnavailable)
+			reply("", fmt.Sprintf("MCP connect: %v", err))
 			return
 		}
 		defer mc.Close()
@@ -182,13 +176,15 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				ClientInfo:      mcp.Implementation{Name: "safecast-web-chat", Version: "1.0.0"},
 			},
 		}); err != nil {
-			sendSSE(w, ssePayload{Type: "error", Error: fmt.Sprintf("MCP init: %v", err)})
+			w.WriteHeader(http.StatusServiceUnavailable)
+			reply("", fmt.Sprintf("MCP init: %v", err))
 			return
 		}
 
 		toolsResult, err := mc.ListTools(ctx, mcp.ListToolsRequest{})
 		if err != nil {
-			sendSSE(w, ssePayload{Type: "error", Error: fmt.Sprintf("list tools: %v", err)})
+			w.WriteHeader(http.StatusServiceUnavailable)
+			reply("", fmt.Sprintf("list tools: %v", err))
 			return
 		}
 		tools := mcpToolsToAnthropic(toolsResult.Tools)
@@ -198,31 +194,31 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			{Role: "user", Content: chatReq.Message},
 		}
 
+		var finalText string
+
 		for {
 			resp, err := callAnthropic(ctx, apiKey, model, messages, tools)
 			if err != nil {
-				sendSSE(w, ssePayload{Type: "error", Error: err.Error()})
+				w.WriteHeader(http.StatusInternalServerError)
+				reply("", err.Error())
 				return
 			}
 
-			// Append assistant turn
 			messages = append(messages, anthropicMessage{
 				Role:    "assistant",
 				Content: resp.Content,
 			})
 
-			// Collect tool_use blocks; stream text blocks
 			var toolUses []contentBlock
 			for _, block := range resp.Content {
 				switch block.Type {
 				case "text":
-					sendSSE(w, ssePayload{Type: "text", Text: block.Text})
+					finalText += block.Text
 				case "tool_use":
 					toolUses = append(toolUses, block)
 				}
 			}
 
-			// No tool calls or end_turn → done
 			if resp.StopReason == "end_turn" || len(toolUses) == 0 {
 				break
 			}
@@ -256,14 +252,13 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				})
 			}
 
-			// Append tool results as user turn
 			messages = append(messages, anthropicMessage{
 				Role:    "user",
 				Content: toolResults,
 			})
 		}
 
-		sendSSE(w, ssePayload{Type: "done"})
+		reply(finalText, "")
 	}
 }
 
