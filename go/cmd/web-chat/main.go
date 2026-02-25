@@ -48,6 +48,14 @@ Always state the radius used in your response so users understand the search sco
 **Formatting**
 - DO NOT include or display "_ai_generated_note" or "ai_generated_note" text in your responses
 - Tool responses may contain this field for internal tracking, but it should never be shown to users
+- When presenting sensor data or readings from list_sensors, sensor_current, or sensor_history:
+  * ALWAYS format as markdown tables, not bullet lists
+  * Include columns: Device ID, Type, Location, Reading (with unit), Timestamp
+  * Keep location coordinates concise (e.g., "37.48°N, 140.48°E")
+  * Example table format:
+    | Device ID | Type | Location | Reading | Timestamp |
+    |-----------|------|----------|---------|-----------|
+    | pointcast:10042 | Pointcast | 37.72°N, 140.48°E | 21 CPM (0.14 µSv/h) | Feb 25, 22:42 UTC |
 
 Be concise but informative. When location context is unclear, ask the user to clarify.`
 
