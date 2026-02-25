@@ -67,6 +67,8 @@ jobs:
           $SSH "chmod +x /root/safecast-mcp-server/safecast-mcp && systemctl start safecast-mcp"
 
           # ── Deploy web-chat ─────────────────────────────────────────────────
+          # Stop service first to allow binary replacement (like mcp-server does)
+          $SSH "systemctl stop safecast-web-chat" || true
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             safecast-web-chat "root@$MAP_SERVER_HOST:/root/safecast-web-chat-server/safecast-web-chat"
           $SSH "chmod +x /root/safecast-web-chat-server/safecast-web-chat"
@@ -95,7 +97,7 @@ jobs:
             '[Install]' \
             'WantedBy=multi-user.target' \
             | $SSH "cat > /etc/systemd/system/safecast-web-chat.service"
-          $SSH "systemctl daemon-reload && systemctl enable safecast-web-chat && systemctl restart safecast-web-chat"
+          $SSH "systemctl daemon-reload && systemctl enable safecast-web-chat && systemctl start safecast-web-chat"
 
           # ── Nginx reload ────────────────────────────────────────────────────
           # The /assistant/ location block is pre-configured in the server's
