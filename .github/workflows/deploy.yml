@@ -169,3 +169,4 @@ EOF
           done
           echo "web-chat health check failed after $MAX_ATTEMPTS attempts"
           exit 1
+
