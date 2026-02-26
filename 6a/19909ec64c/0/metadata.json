@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "6a19909ec64c",
+  "session_id": "4df2f39a-53b2-4edb-8759-ac9db246bd91",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T06:47:52.863188269Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "README.md",
+    "go/cmd/mcp-server/main.go",
+    "go/cmd/mcp-server/rest.go",
+    "go/cmd/mcp-server/rest_extreme.go",
+    "go/cmd/mcp-server/tool_extreme_readings.go",
+    "go/cmd/web-chat/index.html",
+    "go/cmd/web-chat/main.go"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "aeb7e9ea-6e0b-4b24-a6ba-d36ed13afe83",
+  "checkpoint_transcript_start": 309,
+  "transcript_lines_at_start": 309,
+  "token_usage": {
+    "input_tokens": 362,
+    "cache_creation_tokens": 118440,
+    "cache_read_tokens": 3364707,
+    "output_tokens": 84,
+    "api_call_count": 43
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T06:47:52.741415176Z",
+    "agent_lines": 345,
+    "human_added": 212,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 557,
+    "agent_percentage": 61.93895870736086
+  }
+}
