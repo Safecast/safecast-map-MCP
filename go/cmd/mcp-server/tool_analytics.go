@@ -98,8 +98,8 @@ func handleRadiationStats(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 				COUNT(*) AS count,
 				AVG(doserate) AS avg_value
 			FROM postgres_db.public.markers
-			WHERE doserate > 0
-			  AND date > EXTRACT(EPOCH FROM NOW() - INTERVAL '1 year')
+			WHERE doserate > 0 AND doserate < 1000
+			  AND date > CAST(EXTRACT(EPOCH FROM (now() - INTERVAL '1 year')) AS BIGINT)
 			GROUP BY 1
 			ORDER BY 1 DESC
 		`
