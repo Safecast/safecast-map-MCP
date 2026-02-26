@@ -402,8 +402,14 @@
     // Inline code: `code`
     html = html.replace(/`(.+?)`/g, '<code>$1</code>');
 
-    // Links: [text](url)
+    // Links: [text](url) - do this BEFORE auto-linking plain URLs
     html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // Auto-link plain URLs (but not ones already in <a> tags)
+    html = html.replace(/(^|[^"'>])(https?:\/\/[^\s<]+)/g, function(match, prefix, url) {
+      // Don't link if it's already inside an href attribute
+      return prefix + '<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>';
+    });
 
     // Line breaks: preserve newlines, but not after block elements or between table rows
     html = html.replace(/\n/g, (match, offset, string) => {

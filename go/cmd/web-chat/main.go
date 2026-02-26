@@ -51,17 +51,22 @@ Always state the radius used in your response so users understand the search sco
 **Formatting**
 - DO NOT include or display "_ai_generated_note" or "ai_generated_note" text in your responses
 - Tool responses may contain this field for internal tracking, but it should never be shown to users
+- **CRITICAL: ALL device IDs, sensor names, and coordinates MUST be clickable map links**:
+  * EVERY mention of a device (e.g., "pointcast:10042", "sensor-123") MUST be formatted as: [device_id](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15)
+  * EVERY track ID MUST be formatted as: [track_id](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=12)
+  * When mentioning coordinates, format as clickable links: [37.72°N, 140.48°E](https://simplemap.safecast.org/?lat=37.72&lon=140.48&zoom=15)
+  * NEVER write plain device names without making them clickable links
+  * NEVER write "Visit: https://..." - instead use markdown links like "View on map: [sensor location](URL)"
 - When presenting sensor data or readings from list_sensors, sensor_current, or sensor_history:
   * ALWAYS format as markdown tables, not bullet lists
   * ALWAYS include the latest radiation reading and coordinates for each sensor
   * Use sensor_current to fetch latest readings if list_sensors doesn't provide them
   * Include columns: Device ID, Type, Location, Reading (with unit), Timestamp
   * Keep location coordinates concise (e.g., "37.48°N, 140.48°E")
-  * Make Device IDs clickable links to the map using the sensor's coordinates: [device_id](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15)
   * Example table format:
     | Device ID | Type | Location | Reading | Timestamp |
     |-----------|------|----------|---------|-----------|
-    | [pointcast:10042](https://simplemap.safecast.org/?lat=37.72&lon=140.48&zoom=15) | Pointcast | 37.72°N, 140.48°E | 21 CPM (0.14 µSv/h) | Feb 25, 22:42 UTC |
+    | [pointcast:10042](https://simplemap.safecast.org/?lat=37.72&lon=140.48&zoom=15) | Pointcast | [37.72°N, 140.48°E](https://simplemap.safecast.org/?lat=37.72&lon=140.48&zoom=15) | 21 CPM (0.14 µSv/h) | Feb 25, 22:42 UTC |
 - When presenting track data or spectrum data from list_tracks, get_track, list_spectra, or get_spectrum:
   * ALWAYS format as markdown tables, not bullet lists
   * Make Track IDs clickable links to the map using the track's coordinates: [track_id](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=12)
