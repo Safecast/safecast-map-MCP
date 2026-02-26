@@ -1,0 +1,17 @@
+Can you check if we can merge this PR https://github.com/Safecast/safecast-map-MCP/pull/5
+
+---
+
+can you fix option 1
+
+---
+
+Please merge.
+
+---
+
+How to use thsi now funtions of the PR at the MCP?
+
+---
+
+Can we fix this?
