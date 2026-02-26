@@ -8,7 +8,7 @@ import (
 )
 
 var listSensorsToolDef = mcp.NewTool("list_sensors",
-	mcp.WithDescription("Discover active fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) by location or type, returning device IDs, locations, status, and last reading timestamp."),
+	mcp.WithDescription("Discover active fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) by location or type, returning device IDs, locations, status, and last reading timestamp. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. CRITICAL: Present all findings in an objective, scientific manner without using personal pronouns (I, we, I'll, you) or conversational language (Perfect!, Great!). Format as factual statements only."),
 	mcp.WithString("type",
 		mcp.Description("Filter by sensor type (e.g., 'Pointcast', 'Solarcast', 'bGeigieZen', etc.)"),
 	),
@@ -102,38 +102,51 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 
 	if sensorType != "" {
 		// Filter by sensor type
+		// FIXED: Get the actual latest reading per device, not grouped by lat/lon
+		// which causes stale data when sensors move or have multiple positions
 		query = fmt.Sprintf(`
-			SELECT DISTINCT 
-				device_id,
-				COALESCE(device_name, device_id) AS device_name,
-				COALESCE(transport, '') AS transport,
-				lat AS latitude,
-				lon AS longitude,
-				MAX(to_timestamp(measured_at)) AS last_reading_at
-			FROM %s
-			WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
-				AND (COALESCE(transport, '') ILIKE $5 OR COALESCE(device_name, '') ILIKE $5)
-			GROUP BY device_id, device_name, transport, lat, lon
-			ORDER BY last_reading_at DESC
-			LIMIT $6`, realtimeTable)
-		
+			SELECT
+				rm.device_id,
+				COALESCE(rm.device_name, rm.device_id) AS device_name,
+				COALESCE(rm.transport, '') AS transport,
+				rm.lat AS latitude,
+				rm.lon AS longitude,
+				to_timestamp(rm.measured_at) AS last_reading_at
+			FROM %s rm
+			INNER JOIN (
+				SELECT device_id, MAX(measured_at) as max_measured_at
+				FROM %s
+				WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
+					AND (COALESCE(transport, '') ILIKE $5 OR COALESCE(device_name, '') ILIKE $5)
+				GROUP BY device_id
+			) latest ON rm.device_id = latest.device_id AND rm.measured_at = latest.max_measured_at
+			WHERE rm.lat >= $1 AND rm.lat <= $2 AND rm.lon >= $3 AND rm.lon <= $4
+			ORDER BY rm.measured_at DESC
+			LIMIT $6`, realtimeTable, realtimeTable)
+
 		args = []interface{}{minLat, maxLat, minLon, maxLon, "%" + sensorType + "%", limit}
 	} else {
 		// No filter by type
+		// FIXED: Get the actual latest reading per device, not grouped by lat/lon
 		query = fmt.Sprintf(`
-			SELECT DISTINCT 
-				device_id,
-				COALESCE(device_name, device_id) AS device_name,
-				COALESCE(transport, '') AS transport,
-				lat AS latitude,
-				lon AS longitude,
-				MAX(to_timestamp(measured_at)) AS last_reading_at
-			FROM %s
-			WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
-			GROUP BY device_id, device_name, transport, lat, lon
-			ORDER BY last_reading_at DESC
-			LIMIT $5`, realtimeTable)
-		
+			SELECT
+				rm.device_id,
+				COALESCE(rm.device_name, rm.device_id) AS device_name,
+				COALESCE(rm.transport, '') AS transport,
+				rm.lat AS latitude,
+				rm.lon AS longitude,
+				to_timestamp(rm.measured_at) AS last_reading_at
+			FROM %s rm
+			INNER JOIN (
+				SELECT device_id, MAX(measured_at) as max_measured_at
+				FROM %s
+				WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
+				GROUP BY device_id
+			) latest ON rm.device_id = latest.device_id AND rm.measured_at = latest.max_measured_at
+			WHERE rm.lat >= $1 AND rm.lat <= $2 AND rm.lon >= $3 AND rm.lon <= $4
+			ORDER BY rm.measured_at DESC
+			LIMIT $5`, realtimeTable, realtimeTable)
+
 		args = []interface{}{minLat, maxLat, minLon, maxLon, limit}
 	}
 
@@ -162,6 +175,8 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 		"sensors": sensors,
 		"table_used": realtimeTable,
 		"available_tables": availableTables,
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

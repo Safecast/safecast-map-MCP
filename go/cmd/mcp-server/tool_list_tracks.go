@@ -10,7 +10,7 @@ import (
 )
 
 var listTracksToolDef = mcp.NewTool("list_tracks",
-	mcp.WithDescription("Browse bGeigie Import tracks (bulk radiation measurement drives). Can filter by year and optionally month."),
+	mcp.WithDescription("Browse bGeigie Import tracks (bulk radiation measurement drives). Can filter by year, month, and detector/device name. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. When referencing or linking to track data, ALWAYS use https://simplemap.safecast.org as the base URL — NEVER use api.safecast.org, which does not host track data."),
 	mcp.WithNumber("year",
 		mcp.Description("Filter by year (e.g., 2024)"),
 		mcp.Min(2000), mcp.Max(2100),
@@ -18,6 +18,12 @@ var listTracksToolDef = mcp.NewTool("list_tracks",
 	mcp.WithNumber("month",
 		mcp.Description("Filter by month (1-12, requires year parameter)"),
 		mcp.Min(1), mcp.Max(12),
+	),
+	mcp.WithString("detector",
+		mcp.Description("Filter by detector/device name (e.g., 'bGeigieZen', 'bGeigie', 'Pointcast'). Partial match supported."),
+	),
+	mcp.WithString("username",
+		mcp.Description("Filter by uploader username. Partial match supported."),
 	),
 	mcp.WithNumber("limit",
 		mcp.Description("Maximum number of results to return (default: 50, max: 50000)"),
@@ -30,6 +36,8 @@ var listTracksToolDef = mcp.NewTool("list_tracks",
 func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	year := req.GetInt("year", 0)
 	month := req.GetInt("month", 0)
+	detector := req.GetString("detector", "")
+	username := req.GetString("username", "")
 	limit := req.GetInt("limit", 50)
 
 	if month != 0 && year == 0 {
@@ -45,25 +53,29 @@ func handleListTracks(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		return mcp.NewToolResultError("Limit must be between 1 and 50000"), nil
 	}
 
-	// Use API for latest data (no year) or recent years to ensure consistency with web UI
-	// and to avoid database replication lag. API also sorts by ID (upload order),
-	// which better matches "latest uploads" expectation than DB's recording_date sort.
-	currentYear := time.Now().Year()
-	if year == 0 || year >= currentYear-1 {
-		return listTracksAPI(ctx, year, month, limit)
+	// DB is always preferred — the API fallback calls simplemap.safecast.org/api/tracks
+	// which is this server itself, causing infinite recursion.
+	if dbAvailable() {
+		return listTracksDB(ctx, year, month, detector, username, limit)
 	}
 
-	if dbAvailable() {
-		return listTracksDB(ctx, year, month, limit)
+	// DB unavailable and filters require it
+	if detector != "" || username != "" {
+		return mcp.NewToolResultError("Detector/username filtering requires database access"), nil
 	}
+
+	// No DB: fall back to the upstream simplemap API for older years only.
+	// This path only works correctly when the server is not the simplemap backend itself.
 	return listTracksAPI(ctx, year, month, limit)
 }
 
-func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolResult, error) {
-	query := `SELECT id, filename, file_type, track_id, file_size,
-			created_at, source, source_id, recording_date,
-			detector, username
-		FROM uploads
+func listTracksDB(ctx context.Context, year, month int, detector, username string, limit int) (*mcp.CallToolResult, error) {
+	query := `SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size,
+			u.created_at, u.source, u.source_id, u.recording_date,
+			u.detector, u.username,
+			u.internal_user_id, usr.username AS internal_username, usr.email AS uploader_email
+		FROM uploads u
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
 		WHERE 1=1`
 
 	args := []any{}
@@ -85,6 +97,18 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 		argIdx += 2
 	}
 
+	if detector != "" {
+		query += fmt.Sprintf(" AND detector ILIKE $%d", argIdx)
+		args = append(args, "%"+detector+"%")
+		argIdx++
+	}
+
+	if username != "" {
+		query += fmt.Sprintf(" AND (u.username ILIKE $%d OR usr.username ILIKE $%d OR usr.email ILIKE $%d)", argIdx, argIdx, argIdx)
+		args = append(args, "%"+username+"%")
+		argIdx++
+	}
+
 	query += " ORDER BY recording_date DESC"
 	query += fmt.Sprintf(" LIMIT $%d", argIdx)
 	args = append(args, limit)
@@ -95,8 +119,11 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 	}
 
 	// Get total count (with same filters)
-	countQuery := `SELECT count(*) AS total FROM uploads WHERE 1=1`
+	countQuery := `SELECT count(*) AS total FROM uploads u
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
+		WHERE 1=1`
 	countArgs := []any{}
+	countArgIdx := 1
 	if year != 0 {
 		startDate := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
 		endDate := time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -108,8 +135,18 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 				endDate = time.Date(year, time.Month(month+1), 1, 0, 0, 0, 0, time.UTC)
 			}
 		}
-		countQuery += " AND recording_date >= $1 AND recording_date < $2"
+		countQuery += fmt.Sprintf(" AND recording_date >= $%d AND recording_date < $%d", countArgIdx, countArgIdx+1)
 		countArgs = append(countArgs, startDate, endDate)
+		countArgIdx += 2
+	}
+	if detector != "" {
+		countQuery += fmt.Sprintf(" AND detector ILIKE $%d", countArgIdx)
+		countArgs = append(countArgs, "%"+detector+"%")
+		countArgIdx++
+	}
+	if username != "" {
+		countQuery += fmt.Sprintf(" AND (u.username ILIKE $%d OR usr.username ILIKE $%d OR usr.email ILIKE $%d)", countArgIdx, countArgIdx, countArgIdx)
+		countArgs = append(countArgs, "%"+username+"%")
 	}
 	countRow, _ := queryRow(ctx, countQuery, countArgs...)
 	total := 0
@@ -126,16 +163,29 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 
 	tracks := make([]map[string]any, len(rows))
 	for i, r := range rows {
-		tracks[i] = map[string]any{
+		track := map[string]any{
 			"id":             r["id"],
 			"filename":       r["filename"],
 			"track_id":       r["track_id"],
 			"detector":       r["detector"],
-			"username":       r["username"],
 			"file_size":      r["file_size"],
 			"recording_date": r["recording_date"],
 			"created_at":     r["created_at"],
 		}
+
+		// Prefer internal username over external username
+		if internalUsername, ok := r["internal_username"]; ok && internalUsername != nil && internalUsername != "" {
+			track["username"] = internalUsername
+			// Add uploader info block
+			track["uploader"] = map[string]any{
+				"username": internalUsername,
+				"email":    r["uploader_email"],
+			}
+		} else if username, ok := r["username"]; ok && username != nil && username != "" {
+			track["username"] = username
+		}
+
+		tracks[i] = track
 	}
 
 	result := map[string]any{
@@ -143,10 +193,14 @@ func listTracksDB(ctx context.Context, year, month, limit int) (*mcp.CallToolRes
 		"total_available": total,
 		"source":          "database",
 		"filters": map[string]any{
-			"year":  nilIfZero(year),
-			"month": nilIfZero(month),
+			"year":     nilIfZero(year),
+			"month":    nilIfZero(month),
+			"detector": nilIfEmpty(detector),
+			"username": nilIfEmpty(username),
 		},
-		"tracks": tracks,
+		"tracks":             tracks,
+		"_ai_hint":           "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -204,7 +258,9 @@ func listTracksAPI(ctx context.Context, year, month, limit int) (*mcp.CallToolRe
 			"year":  nilIfZero(year),
 			"month": nilIfZero(month),
 		},
-		"tracks": tracks,
+		"tracks":             tracks,
+		"_ai_hint":           "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -212,6 +268,13 @@ func listTracksAPI(ctx context.Context, year, month, limit int) (*mcp.CallToolRe
 
 func nilIfZero(v int) any {
 	if v == 0 {
+		return nil
+	}
+	return v
+}
+
+func nilIfEmpty(v string) any {
+	if v == "" {
 		return nil
 	}
 	return v

@@ -61,15 +61,33 @@ func (c *SafecastClient) GetTracks(ctx context.Context) (map[string]any, error) 
 }
 
 // GetTracksByYear queries /api/tracks/years/{year}.
+// Returns an empty tracks map (not an error) if the year has no data.
 func (c *SafecastClient) GetTracksByYear(ctx context.Context, year int) (map[string]any, error) {
 	path := fmt.Sprintf("/api/tracks/years/%d", year)
-	return c.getObject(ctx, path, nil)
+	result, err := c.getObject(ctx, path, nil)
+	if err != nil {
+		// Upstream returns 404 when no tracks exist for the year — treat as empty.
+		if isNotFound(err) {
+			return map[string]any{"tracks": []any{}}, nil
+		}
+		return nil, err
+	}
+	return result, nil
 }
 
 // GetTracksByMonth queries /api/tracks/months/{year}/{month}.
+// Returns an empty tracks map (not an error) if the month has no data.
 func (c *SafecastClient) GetTracksByMonth(ctx context.Context, year, month int) (map[string]any, error) {
 	path := fmt.Sprintf("/api/tracks/months/%d/%d", year, month)
-	return c.getObject(ctx, path, nil)
+	result, err := c.getObject(ctx, path, nil)
+	if err != nil {
+		// Upstream returns 404 when no tracks exist for the month — treat as empty.
+		if isNotFound(err) {
+			return map[string]any{"tracks": []any{}}, nil
+		}
+		return nil, err
+	}
+	return result, nil
 }
 
 // GetTrackData queries /api/track/{trackID}.json for full track markers.
@@ -145,11 +163,22 @@ func (c *SafecastClient) doGet(ctx context.Context, path string, params url.Valu
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("simplemap API error (404): %s", resp.Status)
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("simplemap API error (%d): %s", resp.StatusCode, resp.Status)
 	}
 
 	return body, nil
+}
+
+// isNotFound returns true if the error is a 404 from the upstream API.
+func isNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	return len(err.Error()) >= 30 && err.Error()[:30] == "simplemap API error (404): 404"
 }
 
 // normalizeLatestMarker converts a marker from /api/latest to MCP output format.
@@ -180,9 +209,9 @@ func normalizeGetMarker(m map[string]any) map[string]any {
 			"latitude":  m["lat"],
 			"longitude": m["lon"],
 		},
-		"track_id":    m["trackID"],
-		"height":      m["altitude"],
-		"detector":    m["detector"],
+		"track_id":     m["trackID"],
+		"height":       m["altitude"],
+		"detector":     m["detector"],
 		"has_spectrum": m["hasSpectrum"],
 	}
 	if date, ok := toFloat(m["date"]); ok && date > 0 {

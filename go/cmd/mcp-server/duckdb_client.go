@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 	"time"
-    _ "github.com/marcboeker/go-duckdb"
+	_ "github.com/marcboeker/go-duckdb"
 )
 
 var duckDB *sql.DB
@@ -53,7 +53,6 @@ func initDuckDB() error {
 	// 5. Attach Postgres if configured
 	pgURL := os.Getenv("DATABASE_URL")
 	if pgURL != "" {
-
 		query := fmt.Sprintf(
 			"ATTACH '%s' AS postgres_db (TYPE POSTGRES, READ_ONLY)",
 			pgURL,
@@ -64,6 +63,23 @@ func initDuckDB() error {
 		} else {
 			log.Println("PostgreSQL attached as postgres_db")
 		}
+	}
+
+	// Create sequence first, then the audit log table that references it
+	createSchemaQuery := `
+	CREATE SEQUENCE IF NOT EXISTS seq_query_log;
+	CREATE TABLE IF NOT EXISTS mcp_query_log (
+		id            BIGINT DEFAULT nextval('seq_query_log'),
+		tool_name     VARCHAR,
+		params        JSON,
+		result_count  INTEGER,
+		duration_ms   DOUBLE,
+		client_info   VARCHAR,
+		created_at    TIMESTAMPTZ DEFAULT now()
+	);
+	`
+	if _, err := duckDB.Exec(createSchemaQuery); err != nil {
+		return fmt.Errorf("failed to create audit log schema: %w", err)
 	}
 
 	// 6. Schema version table
@@ -167,26 +183,21 @@ func LogQueryAsync(toolName string, params map[string]any, resultCount int, dura
     }
     
     go func() {
-        // Proper JSON serialization for params field
-        var paramsJSON []byte
-        if params != nil {
-            var err error
-            paramsJSON, err = json.Marshal(params)
-            if err != nil {
-                log.Printf("Error marshaling params to JSON: %v", err)
-                paramsJSON = []byte("{}")
-            }
-        } else {
-            paramsJSON = []byte("{}")
+        // Serialize params as proper JSON for DuckDB's JSON column type.
+        paramsJSON, err := json.Marshal(params)
+        if err != nil {
+            log.Printf("Error marshaling params to JSON: %v", err)
+            return
         }
+        paramsStr := string(paramsJSON)
 
-        _, err := duckDB.Exec(`
+        _, execErr := duckDB.Exec(`
             INSERT INTO mcp_query_log (tool_name, params, result_count, duration_ms, client_info)
             VALUES (?, ?, ?, ?, ?)
-        `, toolName, string(paramsJSON), resultCount, float64(duration.Milliseconds()), clientInfo)
-        
-        if err != nil {
-            log.Printf("Error logging query to DuckDB: %v", err)
+        `, toolName, paramsStr, resultCount, float64(duration.Milliseconds()), clientInfo)
+
+        if execErr != nil {
+            log.Printf("Error logging query to DuckDB: %v", execErr)
         }
     }()
 }

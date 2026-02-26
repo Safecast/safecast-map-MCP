@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
 var sensorHistoryToolDef = mcp.NewTool("sensor_history",
-	mcp.WithDescription("Pull time-series data from a fixed sensor over a date range."),
+	mcp.WithDescription("Pull time-series data from REAL-TIME fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.) over a date range. Use this tool for historical time-series from fixed sensors. NOT for mobile bGeigie devices - use device_history for those. The 'unit' field indicates the measurement unit - CPM means 'counts per minute' (NOT counts per second). Always present radiation values in µSv/h by converting from CPM using detector-specific factors. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. CRITICAL: Present all findings in an objective, scientific manner without using personal pronouns (I, we, I'll, you) or conversational language (Perfect!, Great!). Format as factual statements only."),
 	mcp.WithString("device_id",
 		mcp.Description("Device identifier to get historical data from"),
 		mcp.Required(),
@@ -116,7 +117,7 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 	
 	// Query the appropriate real-time table for time-series data
 	query := fmt.Sprintf(`
-		SELECT 
+		SELECT
 			id,
 			device_id,
 			COALESCE(device_name, device_id) AS device_name,
@@ -127,9 +128,10 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 			lon AS longitude,
 			COALESCE(transport, '') AS transport
 		FROM %s
-		WHERE device_id = $1 
-			AND measured_at >= $2 
+		WHERE device_id = $1
+			AND measured_at >= $2
 			AND measured_at <= $3
+			AND to_timestamp(measured_at) <= NOW()
 		ORDER BY measured_at ASC
 		LIMIT $4`, realtimeTable)
 
@@ -143,12 +145,18 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 
 	measurements := make([]map[string]any, len(rows))
 	for i, r := range rows {
+		// Fix incorrect unit: Geiger counters report in CPM (counts per minute), not CPS
+		unit := r["unit"]
+		if unitStr, ok := unit.(string); ok {
+			unit = strings.ReplaceAll(strings.ReplaceAll(unitStr, "cps", "cpm"), "CPS", "CPM")
+		}
+
 		measurements[i] = map[string]any{
 			"id":          r["id"],
 			"device_id":   r["device_id"],
 			"device_name": r["device_name"],
 			"value":       r["value"],
-			"unit":        r["unit"],
+			"unit":        unit,
 			"captured_at": r["captured_at"],
 			"location": map[string]any{
 				"latitude":  r["latitude"],
@@ -174,6 +182,8 @@ func sensorHistoryDB(ctx context.Context, deviceID string, startDate, endDate ti
 		"measurements": measurements,
 		"table_used": realtimeTable,
 		"available_tables": availableTables,
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

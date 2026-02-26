@@ -7,7 +7,7 @@ import (
 )
 
 var getSpectrumToolDef = mcp.NewTool("get_spectrum",
-	mcp.WithDescription("Get gamma spectroscopy data for a specific measurement point."),
+	mcp.WithDescription("Get gamma spectroscopy data for a specific measurement point. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithNumber("marker_id",
 		mcp.Description("Marker/measurement identifier"),
 		mcp.Min(1),
@@ -37,9 +37,12 @@ func getSpectrumDB(ctx context.Context, markerID int) (*mcp.CallToolResult, erro
 		SELECT s.id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 			s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
 			s.source_format, s.filename, s.created_at,
-			m.doserate, m.lat, m.lon, to_timestamp(m.date) AS captured_at
+			m.doserate, m.lat, m.lon, to_timestamp(m.date) AS captured_at, m.trackid,
+			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
 		FROM spectra s
 		JOIN markers m ON m.id = s.marker_id
+		LEFT JOIN uploads u ON u.track_id = m.trackid
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
 		WHERE s.marker_id = $1`, markerID)
 
 	if err != nil {
@@ -84,7 +87,18 @@ func getSpectrumDB(ctx context.Context, markerID int) (*mcp.CallToolResult, erro
 			"latitude":    row["lat"],
 			"longitude":   row["lon"],
 			"captured_at": row["captured_at"],
+			"track_id":    row["trackid"],
 		},
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
+	}
+
+	// Add uploader information if available
+	if uploaderUsername, ok := row["uploader_username"]; ok && uploaderUsername != nil {
+		result["uploader"] = map[string]any{
+			"username": uploaderUsername,
+			"email":    row["uploader_email"],
+		}
 	}
 
 	return jsonResult(result)
@@ -112,6 +126,8 @@ func getSpectrumAPI(ctx context.Context, markerID int) (*mcp.CallToolResult, err
 			"source_format":  spectrum["sourceFormat"],
 			"filename":       spectrum["filename"],
 		},
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

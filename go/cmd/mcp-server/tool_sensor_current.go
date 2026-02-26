@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
 var sensorCurrentToolDef = mcp.NewTool("sensor_current",
-	mcp.WithDescription("Get the latest reading(s) from a specific sensor or from all sensors in a geographic area."),
+	mcp.WithDescription("Get the MOST RECENT readings from REAL-TIME fixed sensors (Pointcast, Solarcast, bGeigieZen, etc.). **USE THIS TOOL** when users ask about 'current', 'latest', 'live', 'now', or 'real-time' sensor data. This returns the freshest data available from the realtime_measurements table. **DO NOT** use query_radiation for current sensor data (that tool searches historical markers, not real-time sensors). For mobile bGeigie devices, use device_history. For historical trends from sensors, use sensor_history. Always check and report the captured_at timestamp to users. CPM = counts per minute (convert to µSv/h using ~0.0069 factor for LND 7318 detectors). Present data objectively without personal pronouns or conversational language."),
 	mcp.WithString("device_id",
 		mcp.Description("Specific device ID to get latest reading from"),
 	),
@@ -102,7 +103,7 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 	if deviceID != "" {
 		// Get latest reading from specific device
 		query = fmt.Sprintf(`
-			SELECT 
+			SELECT
 				id,
 				device_id,
 				COALESCE(device_name, device_id) AS device_name,
@@ -114,14 +115,15 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 				COALESCE(transport, '') AS transport
 			FROM %s
 			WHERE device_id = $1
+			  AND to_timestamp(measured_at) <= NOW()
 			ORDER BY measured_at DESC
 			LIMIT 1`, realtimeTable)
-		
+
 		args = []interface{}{deviceID}
 	} else {
 		// Get latest readings from all sensors in geographic area
 		query = fmt.Sprintf(`
-			SELECT 
+			SELECT
 				rm.id,
 				rm.device_id,
 				COALESCE(rm.device_name, rm.device_id) AS device_name,
@@ -136,12 +138,14 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 				SELECT device_id, MAX(measured_at) as max_measured_at
 				FROM %s
 				WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
+				  AND to_timestamp(measured_at) <= NOW()
 				GROUP BY device_id
 			) latest ON rm.device_id = latest.device_id AND rm.measured_at = latest.max_measured_at
 			WHERE rm.lat >= $1 AND rm.lat <= $2 AND rm.lon >= $3 AND rm.lon <= $4
+			  AND to_timestamp(rm.measured_at) <= NOW()
 			ORDER BY rm.measured_at DESC
 			LIMIT $5`, realtimeTable, realtimeTable)
-		
+
 		args = []interface{}{minLat, maxLat, minLon, maxLon, limit}
 	}
 
@@ -152,12 +156,18 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 
 	readings := make([]map[string]any, len(rows))
 	for i, r := range rows {
+		// Fix incorrect unit: Geiger counters report in CPM (counts per minute), not CPS
+		unit := r["unit"]
+		if unitStr, ok := unit.(string); ok {
+			unit = strings.ReplaceAll(strings.ReplaceAll(unitStr, "cps", "cpm"), "CPS", "CPM")
+		}
+
 		readings[i] = map[string]any{
 			"id":          r["id"],
 			"device_id":   r["device_id"],
 			"device_name": r["device_name"],
 			"value":       r["value"],
-			"unit":        r["unit"],
+			"unit":        unit,
 			"captured_at": r["captured_at"],
 			"location": map[string]any{
 				"latitude":  r["latitude"],
@@ -173,6 +183,8 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 		"readings": readings,
 		"table_used": realtimeTable,
 		"available_tables": availableTables,
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) **REAL-TIME DATA**: This tool returns the MOST RECENT readings from fixed sensors. Readings with future timestamps (sensor clock errors) are automatically filtered out. Always check the 'captured_at' timestamp and report it to the user - if the data is more than 24 hours old, mention this to the user and suggest checking if the sensor is still active. (2) **UNITS**: CPM means 'counts per minute' NOT 'counts per second'. Always convert to µSv/h using detector-specific factors (LND 7318: ~0.0069 µSv/h per CPM). (3) **TOOL SELECTION**: For latest sensor data, use 'sensor_current'. For historical trends, use 'sensor_history'. For mobile measurements, use 'device_history'. Do NOT use 'query_radiation' for current sensor data as it searches the historical markers table. (4) **PRESENTATION**: State objective facts only - no personal pronouns (I, we, you), exclamations, or conversational phrases. Example: 'Device X reading: 50 CPM (0.35 µSv/h) at [time]' NOT 'I found a reading...'",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)

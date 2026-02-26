@@ -3,10 +3,10 @@
 /pkg/
 *.exe
 *.log
-# Go binaries
-go/cmd/mcp-server/mcp-server
-safecast-mcp
-safecast-mcp-test
+# Go binaries (in go/ directory only)
+/go/mcp-server
+/go/safecast-mcp
+/go/safecast-mcp-test
 
 # Editor
 .vscode/
@@ -20,3 +20,4 @@ safecast-mcp-test
 
 # Local docs (not for repo)
 minerva-onboarding.md
+go/web-chat

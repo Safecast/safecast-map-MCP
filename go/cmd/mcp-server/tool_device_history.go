@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
 var deviceHistoryToolDef = mcp.NewTool("device_history",
-	mcp.WithDescription("Get historical radiation measurements from a specific monitoring device over a time period."),
+	mcp.WithDescription("Get historical measurements from MOBILE bGeigie survey devices or historical import data. Use this tool ONLY for mobile devices, NOT for real-time fixed sensors (use sensor_current/sensor_history for those). Radiation values are typically in CPM (counts per minute, NOT counts per second). Always present radiation values in µSv/h by converting from CPM using detector-specific factors. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. CRITICAL: Present all findings in an objective, scientific manner without using personal pronouns (I, we, I'll, you) or conversational language (Perfect!, Great!). Format as factual statements only."),
 	mcp.WithString("device_id",
 		mcp.Description("Device identifier"),
 		mcp.Required(),
@@ -55,13 +56,16 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 	// Query both markers table and realtime_measurements table
 	// First, try markers table (bGeigie imports)
 	markersQuery := `
-		SELECT id, doserate AS value, 'µSv/h' AS unit,
-			to_timestamp(date) AS captured_at,
-			lat AS latitude, lon AS longitude,
-			altitude AS height, detector, trackid::text AS track_id
-		FROM markers
-		WHERE device_id = $1 AND date >= $2 AND date <= $3
-		ORDER BY date DESC
+		SELECT m.id, m.doserate AS value, 'µSv/h' AS unit,
+			to_timestamp(m.date) AS captured_at,
+			m.lat AS latitude, m.lon AS longitude,
+			m.altitude AS height, m.detector, m.trackid::text AS track_id,
+			u.internal_user_id, usr.username AS uploader_username, usr.email AS uploader_email
+		FROM markers m
+		LEFT JOIN uploads u ON u.track_id = m.trackid
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text
+		WHERE m.device_id = $1 AND m.date >= $2 AND m.date <= $3
+		ORDER BY m.date DESC
 		LIMIT $4`
 
 	markersRows, err := queryRows(ctx, markersQuery, deviceID, startDate.Unix(), now.Unix(), limit)
@@ -157,15 +161,30 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 		if r["track_id"] != nil {
 			measurement["track_id"] = r["track_id"]
 		}
+
+		// Add uploader information if available
+		if uploaderUsername, ok := r["uploader_username"]; ok && uploaderUsername != nil && uploaderUsername != "" {
+			measurement["uploader"] = map[string]any{
+				"username": uploaderUsername,
+				"email":    r["uploader_email"],
+			}
+		}
+
 		allMeasurements = append(allMeasurements, measurement)
 	}
 	
 	// Process realtime results
 	for _, r := range realtimeRows {
+		// Fix incorrect unit: Geiger counters report in CPM (counts per minute), not CPS
+		unit := r["unit"]
+		if unitStr, ok := unit.(string); ok {
+			unit = strings.ReplaceAll(strings.ReplaceAll(unitStr, "cps", "cpm"), "CPS", "CPM")
+		}
+
 		measurement := map[string]any{
 			"id":    r["id"],
 			"value": r["value"],
-			"unit":  r["unit"],
+			"unit":  unit,
 			"captured_at": r["captured_at"],
 			"location": map[string]any{
 				"latitude":  r["latitude"],
@@ -233,6 +252,8 @@ func deviceHistoryDB(ctx context.Context, deviceID string, days, limit int) (*mc
 		"count":        len(measurements),
 		"source":       "database",
 		"measurements": measurements,
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	return jsonResult(result)
@@ -300,6 +321,8 @@ func deviceHistoryAPI(ctx context.Context, deviceIDStr string, days, limit int) 
 		"total_available": totalAvailable,
 		"source":          "api",
 		"measurements":    measurements,
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements.",
+		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
 	if ranges, ok := resp["ranges"].(map[string]any); ok {

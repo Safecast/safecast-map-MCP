@@ -1,0 +1,311 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Safecast Radiation API",
+        "description": "Access 200M+ radiation measurements from Safecast citizen scientists worldwide. All data is CC0-licensed and read-only.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://simplemap.safecast.org/api"
+        }
+    ],
+    "paths": {
+        "/gpt/radiation": {
+            "get": {
+                "operationId": "queryRadiationNearLocation",
+                "summary": "Find radiation measurements near a location",
+                "description": "Returns up to 5 recent radiation measurements near the given coordinates. Use for questions about radiation levels at a specific place.",
+                "parameters": [
+                    {
+                        "name": "lat",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "description": "Latitude (-90 to 90)"
+                    },
+                    {
+                        "name": "lon",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "description": "Longitude (-180 to 180)"
+                    },
+                    {
+                        "name": "radius_m",
+                        "in": "query",
+                        "schema": {
+                            "type": "number",
+                            "default": 1500
+                        },
+                        "description": "Search radius in meters (25-50000)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compact radiation measurements (max 5 results)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "n": {
+                                            "type": "integer",
+                                            "description": "Number of results returned"
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "description": "Total available in area"
+                                        },
+                                        "src": {
+                                            "type": "string",
+                                            "description": "Data source (database or api)"
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "usvh": {
+                                                        "type": "number",
+                                                        "description": "Dose rate in µSv/h"
+                                                    },
+                                                    "at": {
+                                                        "type": "string",
+                                                        "description": "Measurement timestamp (ISO 8601)"
+                                                    },
+                                                    "lat": {
+                                                        "type": "number"
+                                                    },
+                                                    "lon": {
+                                                        "type": "number"
+                                                    },
+                                                    "det": {
+                                                        "type": "string",
+                                                        "description": "Detector model"
+                                                    },
+                                                    "dist_m": {
+                                                        "type": "number",
+                                                        "description": "Distance from query point in meters"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gpt/area": {
+            "get": {
+                "operationId": "searchRadiationInArea",
+                "summary": "Find radiation measurements within a bounding box",
+                "description": "Returns up to 5 radiation measurements inside a geographic rectangle. Use when the user specifies a region or country.",
+                "parameters": [
+                    {
+                        "name": "min_lat",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "max_lat",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "min_lon",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "max_lon",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compact measurements in area (max 5 results)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "n": {
+                                            "type": "integer"
+                                        },
+                                        "src": {
+                                            "type": "string"
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "usvh": {
+                                                        "type": "number"
+                                                    },
+                                                    "at": {
+                                                        "type": "string"
+                                                    },
+                                                    "lat": {
+                                                        "type": "number"
+                                                    },
+                                                    "lon": {
+                                                        "type": "number"
+                                                    },
+                                                    "det": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gpt/stats": {
+            "get": {
+                "operationId": "getRadiationStats",
+                "summary": "Get aggregate radiation statistics by year or overall",
+                "description": "Returns aggregate radiation statistics grouped by year or overall. Good for trends, overviews, and 'how much data does Safecast have' questions.",
+                "parameters": [
+                    {
+                        "name": "interval",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "year",
+                                "overall"
+                            ],
+                            "default": "year"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Aggregated statistics",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "interval": {
+                                            "type": "string"
+                                        },
+                                        "count": {
+                                            "type": "integer"
+                                        },
+                                        "stats": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "period": {
+                                                        "type": "string"
+                                                    },
+                                                    "measurement_count": {
+                                                        "type": "integer"
+                                                    },
+                                                    "avg_value": {
+                                                        "type": "number"
+                                                    },
+                                                    "min_value": {
+                                                        "type": "number"
+                                                    },
+                                                    "max_value": {
+                                                        "type": "number"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/info/{topic}": {
+            "get": {
+                "operationId": "getRadiationReferenceInfo",
+                "summary": "Get radiation educational reference information",
+                "description": "Returns educational content about radiation. Use for questions about units, safety levels, detector types, background radiation, or isotopes.",
+                "parameters": [
+                    {
+                        "name": "topic",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "units",
+                                "dose_rates",
+                                "safety_levels",
+                                "detectors",
+                                "background_levels",
+                                "isotopes"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reference content",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "topic": {
+                                            "type": "string"
+                                        },
+                                        "content": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

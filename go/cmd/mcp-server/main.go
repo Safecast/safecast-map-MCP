@@ -100,7 +100,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/mcp-http", httpServer)
-	mux.Handle("/", sseServer)
+	mux.Handle("/mcp/", sseServer) // SSE server handles /mcp/sse and /mcp/message
 
 	port := os.Getenv("MCP_PORT")
 	if port == "" {
@@ -184,3 +184,4 @@ func instrument(
 
 		return res, err
 	}
+}
