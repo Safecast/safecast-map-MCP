@@ -304,7 +304,7 @@ Get aggregate radiation statistics from the Safecast database grouped by time in
 
 ### query_extreme_readings
 
-Find the highest or lowest radiation readings in the database with full location details. Unlike `radiation_stats` which provides aggregates, this tool returns specific measurements with coordinates, device IDs, and timestamps. Powered by DuckDB + PostgreSQL.
+Find the highest or lowest radiation readings in the database with full location details. Unlike `radiation_stats` which provides aggregates, this tool returns specific measurements with coordinates, device IDs, and timestamps. Supports filtering out anomalous sources by device or geographic area. Powered by DuckDB + PostgreSQL.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
@@ -314,6 +314,8 @@ Find the highest or lowest radiation readings in the database with full location
 | `max_lat` | number | No | 90 | Northern boundary for optional geographic filter |
 | `min_lon` | number | No | -180 | Western boundary for optional geographic filter |
 | `max_lon` | number | No | 180 | Eastern boundary for optional geographic filter |
+| `exclude_devices` | array | No | `[]` | Array of device IDs to exclude from results (e.g., `["bGeigie-2113"]`) |
+| `exclude_areas` | string | No | `""` | JSON array of bounding boxes to exclude (see example below) |
 
 **Example**: Find the 20 highest readings globally:
 ```json
@@ -323,6 +325,21 @@ Find the highest or lowest radiation readings in the database with full location
 **Example**: Find the 10 highest readings in Japan (Fukushima region):
 ```json
 {"name": "query_extreme_readings", "arguments": {"direction": "highest", "limit": 10, "min_lat": 36.5, "max_lat": 38.5, "min_lon": 140.0, "max_lon": 141.5}}
+```
+
+**Example**: Find highest readings excluding anomalous device bGeigie-2113:
+```json
+{"name": "query_extreme_readings", "arguments": {"direction": "highest", "limit": 50, "exclude_devices": ["bGeigie-2113"]}}
+```
+
+**Example**: Find highest readings excluding Cork, Ireland (known anomalous source):
+```json
+{"name": "query_extreme_readings", "arguments": {"direction": "highest", "limit": 50, "exclude_areas": "[{\"min_lat\":51.8,\"max_lat\":52.0,\"min_lon\":-8.6,\"max_lon\":-8.3}]"}}
+```
+
+**Example**: Exclude both a device and a geographic area:
+```json
+{"name": "query_extreme_readings", "arguments": {"direction": "highest", "limit": 50, "exclude_devices": ["bGeigie-2113", "bGeigie-456"], "exclude_areas": "[{\"min_lat\":51.8,\"max_lat\":52.0,\"min_lon\":-8.6,\"max_lon\":-8.3}]"}}
 ```
 
 Each result includes: `id`, `value` (µSv/h), `location` (lat/lon), `captured_at`, `device_id`, `track_id`, and `detector`.

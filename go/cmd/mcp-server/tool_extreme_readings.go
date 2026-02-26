@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -10,7 +12,7 @@ import (
 // Tool Definition
 
 var queryExtremeReadingsToolDef = mcp.NewTool("query_extreme_readings",
-	mcp.WithDescription("Find the highest or lowest radiation readings in the database with full location details. Use this to identify extreme measurements globally or within a specific region."),
+	mcp.WithDescription("Find the highest or lowest radiation readings in the database with full location details. Use this to identify extreme measurements globally or within a specific region. Supports excluding anomalous devices or geographic areas."),
 	mcp.WithString("direction",
 		mcp.Description("'highest' for maximum readings or 'lowest' for minimum readings"),
 		mcp.Enum("highest", "lowest"),
@@ -30,6 +32,12 @@ var queryExtremeReadingsToolDef = mcp.NewTool("query_extreme_readings",
 	),
 	mcp.WithNumber("max_lon",
 		mcp.Description("Eastern boundary for optional geographic filter"),
+	),
+	mcp.WithArray("exclude_devices",
+		mcp.Description("Array of device IDs to exclude from results (e.g., ['bGeigie-2113', 'bGeigie-456'] to filter out anomalous sources)"),
+	),
+	mcp.WithString("exclude_areas",
+		mcp.Description("JSON array of geographic bounding boxes to exclude. Format: [{\"min_lat\":51.8,\"max_lat\":52.0,\"min_lon\":-8.6,\"max_lon\":-8.3}] to exclude Cork, Ireland. Can specify multiple areas to exclude."),
 	),
 )
 
@@ -63,42 +71,68 @@ func handleQueryExtremeReadings(ctx context.Context, req mcp.CallToolRequest) (*
 		hasGeoFilter = true
 	}
 
-	var query string
-	if hasGeoFilter {
-		query = fmt.Sprintf(`
-			SELECT
-				id,
-				doserate,
-				lat,
-				lon,
-				device_id,
-				to_timestamp(date)::TIMESTAMP AS captured_at,
-				trackid,
-				detector
-			FROM postgres_db.public.markers
-			WHERE doserate > 0 AND doserate < 10000
-			  AND lat BETWEEN %.6f AND %.6f
-			  AND lon BETWEEN %.6f AND %.6f
-			ORDER BY doserate %s
-			LIMIT %d
-		`, minLat, maxLat, minLon, maxLon, orderDir, limit)
-	} else {
-		query = fmt.Sprintf(`
-			SELECT
-				id,
-				doserate,
-				lat,
-				lon,
-				device_id,
-				to_timestamp(date)::TIMESTAMP AS captured_at,
-				trackid,
-				detector
-			FROM postgres_db.public.markers
-			WHERE doserate > 0 AND doserate < 10000
-			ORDER BY doserate %s
-			LIMIT %d
-		`, orderDir, limit)
+	// Parse exclusion parameters
+	excludeDevices := req.GetStringSlice("exclude_devices", []string{})
+
+	type ExclusionArea struct {
+		MinLat float64 `json:"min_lat"`
+		MaxLat float64 `json:"max_lat"`
+		MinLon float64 `json:"min_lon"`
+		MaxLon float64 `json:"max_lon"`
 	}
+	var excludeAreas []ExclusionArea
+	if excludeAreasStr := req.GetString("exclude_areas", ""); excludeAreasStr != "" {
+		if err := json.Unmarshal([]byte(excludeAreasStr), &excludeAreas); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid exclude_areas JSON: %v", err)), nil
+		}
+	}
+
+	// Build WHERE clause with exclusions
+	var whereConditions []string
+	whereConditions = append(whereConditions, "doserate > 0 AND doserate < 10000")
+
+	// Add geographic filter
+	if hasGeoFilter {
+		whereConditions = append(whereConditions, fmt.Sprintf(
+			"lat BETWEEN %.6f AND %.6f AND lon BETWEEN %.6f AND %.6f",
+			minLat, maxLat, minLon, maxLon,
+		))
+	}
+
+	// Add device exclusions
+	if len(excludeDevices) > 0 {
+		deviceList := make([]string, len(excludeDevices))
+		for i, dev := range excludeDevices {
+			deviceList[i] = fmt.Sprintf("'%s'", strings.ReplaceAll(dev, "'", "''"))
+		}
+		whereConditions = append(whereConditions, fmt.Sprintf(
+			"device_id NOT IN (%s)", strings.Join(deviceList, ", "),
+		))
+	}
+
+	// Add area exclusions
+	for _, area := range excludeAreas {
+		whereConditions = append(whereConditions, fmt.Sprintf(
+			"NOT (lat BETWEEN %.6f AND %.6f AND lon BETWEEN %.6f AND %.6f)",
+			area.MinLat, area.MaxLat, area.MinLon, area.MaxLon,
+		))
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			id,
+			doserate,
+			lat,
+			lon,
+			device_id,
+			to_timestamp(date)::TIMESTAMP AS captured_at,
+			trackid,
+			detector
+		FROM postgres_db.public.markers
+		WHERE %s
+		ORDER BY doserate %s
+		LIMIT %d
+	`, strings.Join(whereConditions, " AND "), orderDir, limit)
 
 	// Execute query
 	rows, err := duckDB.Query(query)
