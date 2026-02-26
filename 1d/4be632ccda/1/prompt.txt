@@ -1,0 +1,13 @@
+can we create an option for an AI bot to exclude data? See:
+
+---
+
+[Request interrupted by user]
+
+---
+
+Exclude devices and exclude cities and areas?
+
+---
+
+Did yo commit?

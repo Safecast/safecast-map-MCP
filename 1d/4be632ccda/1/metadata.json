@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "1d4be632ccda",
+  "session_id": "f80e1c19-a344-4583-9cf6-5c9e7daf6737",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T13:09:47.510328205Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md",
+    "go/cmd/mcp-server/rest_extreme.go",
+    "go/cmd/mcp-server/tool_extreme_readings.go"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "3c77fa08-965f-44cc-acf3-7dda33aa6084",
+  "token_usage": {
+    "input_tokens": 412,
+    "cache_creation_tokens": 69608,
+    "cache_read_tokens": 1219984,
+    "output_tokens": 71,
+    "api_call_count": 34
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T13:09:47.46370561Z",
+    "agent_lines": 113,
+    "human_added": 106,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 219,
+    "agent_percentage": 51.598173515981735
+  }
+}
