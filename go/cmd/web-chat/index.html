@@ -125,9 +125,11 @@
       width: 30px; height: 30px; border-radius: 50%;
       flex-shrink: 0; display: flex; align-items: center; justify-content: center;
       font-size: 14px;
+      overflow: hidden;
     }
     .msg.user .avatar { background: var(--green); color: #fff; }
     .msg.bot  .avatar { background: var(--surface); border: 1px solid var(--border); }
+    .msg.bot  .avatar img { width: 100%; height: 100%; object-fit: contain; }
 
     .bubble {
       padding: 10px 14px;
@@ -199,6 +201,14 @@
       border: none;
       border-top: 1px solid var(--border);
       margin: 16px 0;
+    }
+
+    /* AI disclaimer styling */
+    .bubble hr + em {
+      color: var(--muted);
+      font-size: 12px;
+      display: block;
+      margin-top: 12px;
     }
 
     .bubble.thinking {
@@ -416,7 +426,14 @@
 
     const avatar = document.createElement('div');
     avatar.className = 'avatar';
-    avatar.textContent = role === 'user' ? '👤' : '🤖';
+    if (role === 'user') {
+      avatar.textContent = '👤';
+    } else {
+      const img = document.createElement('img');
+      img.src = 'safecast-square-ct.png';
+      img.alt = 'Safecast';
+      avatar.appendChild(img);
+    }
 
     const bubble = document.createElement('div');
     bubble.className = `bubble ${cls || ''}`;
@@ -517,8 +534,19 @@
       sendBtn.disabled = false;
       msgEl.focus();
 
-      // Update conversation history on successful completion
+      // Add AI disclaimer to successful bot messages
       if (success && accumulated) {
+        // Re-render with disclaimer
+        const disclaimerText = '\n\n---\n\n_Note: AI-generated response using data from the Safecast radiation monitoring network. For critical safety decisions, please consult official sources._';
+        botBubble.innerHTML = markdownToHTML(accumulated + disclaimerText);
+
+        // Re-add copy button (since we replaced innerHTML)
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = () => copyMessage(accumulated, copyBtn); // Copy without disclaimer
+        botBubble.appendChild(copyBtn);
+
         conversationHistory.push(
           { role: 'user', content: text },
           { role: 'assistant', content: accumulated }
