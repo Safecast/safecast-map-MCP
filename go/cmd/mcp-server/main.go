@@ -12,13 +12,15 @@ import (
 )
 
 func main() {
+
+	log.Println("DEBUG: safecast MCP server binary version 2026-02-18-1")
 	// Create MCP server
 	mcpServer := server.NewMCPServer(
 		"safecast-mcp",
 		"1.0.0",
 	)
 
-	// Initialize database connection (optional — falls back to REST API)
+	// Initialize database connection
 	if os.Getenv("DATABASE_URL") != "" {
 		if err := initDB(); err != nil {
 			log.Printf("Warning: database connection failed: %v (using REST API fallback)", err)
@@ -36,17 +38,14 @@ func main() {
 		log.Println("Initialized DuckDB analytics engine")
 	}
 
-	// Health check tool
+	// Register tools
 	mcpServer.AddTool(
 		mcp.NewTool("ping",
 			mcp.WithDescription("Health check tool"),
 		),
-		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			return mcp.NewToolResultText("pong"), nil
-		},
+		instrument("ping", pingHandler),
 	)
 
-	// Safecast tools (Instrumented)
 	mcpServer.AddTool(queryRadiationToolDef, instrument("query_radiation", handleQueryRadiation))
 	mcpServer.AddTool(searchAreaToolDef, instrument("search_area", handleSearchArea))
 	mcpServer.AddTool(listTracksToolDef, instrument("list_tracks", handleListTracks))
@@ -56,83 +55,133 @@ func main() {
 	mcpServer.AddTool(listSpectraToolDef, instrument("list_spectra", handleListSpectra))
 	mcpServer.AddTool(radiationInfoToolDef, instrument("radiation_info", handleRadiationInfo))
 	mcpServer.AddTool(dbInfoToolDef, instrument("db_info", handleDBInfo))
-
-	// Real-time sensor tools
 	mcpServer.AddTool(listSensorsToolDef, instrument("list_sensors", handleListSensors))
 	mcpServer.AddTool(sensorCurrentToolDef, instrument("sensor_current", handleSensorCurrent))
 	mcpServer.AddTool(sensorHistoryToolDef, instrument("sensor_history", handleSensorHistory))
+	mcpServer.AddTool(queryAnalyticsToolDef, instrument("query_analytics", handleQueryAnalytics))
+	mcpServer.AddTool(radiationStatsToolDef, instrument("radiation_stats", handleRadiationStats))
+	mcpServer.AddTool(queryDuckDBLogsToolDef, instrument("query_duckdb_logs", handleQueryDuckDBLogs))
 
-    // Analytics Tools
-    mcpServer.AddTool(queryAnalyticsToolDef, handleQueryAnalytics)
-    mcpServer.AddTool(radiationStatsToolDef, handleRadiationStats)
+	// 🚨 TRANSPORT SWITCH
+	if os.Getenv("MCP_TRANSPORT") == "stdio" {
+
+		log.Println("Starting MCP server in stdio mode (Claude Desktop)")
+
+		stdioServer := server.NewStdioServer(mcpServer)
+
+		err := stdioServer.Listen(
+			context.Background(),
+			os.Stdin,
+			os.Stdout,
+		)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return
+	}
+
+	// Default: HTTP mode (production)
 
 	baseURL := os.Getenv("MCP_BASE_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:3333"
 	}
 
-	// SSE transport (legacy, for existing clients)
-	// Note: baseURL should NOT include /mcp — WithStaticBasePath adds it
 	sseServer := server.NewSSEServer(mcpServer,
 		server.WithBaseURL(baseURL),
 		server.WithStaticBasePath("/mcp"),
 	)
 
-	// Streamable HTTP transport (for Claude.ai and modern clients)
 	httpServer := server.NewStreamableHTTPServer(mcpServer,
 		server.WithEndpointPath("/mcp-http"),
 	)
 
-	// Serve both on the same port
 	mux := http.NewServeMux()
 	mux.Handle("/mcp-http", httpServer)
 	mux.Handle("/mcp/", sseServer) // SSE server handles /mcp/sse and /mcp/message
 
-	// REST API + Swagger UI
-	restHandler := &RESTHandler{}
-	restHandler.Register(mux)
-
-	// Determine listening port (default 3333)
 	port := os.Getenv("MCP_PORT")
 	if port == "" {
 		port = "3333"
 	}
+
 	listenAddr := ":" + port
+
 	log.Printf("Starting MCP server on %s", listenAddr)
 	log.Println("  SSE endpoint: /mcp/sse")
 	log.Println("  Streamable HTTP endpoint: /mcp-http")
+
 	log.Println("  REST API: /api/...")
 	log.Println("  Swagger UI: /docs/")
+
 	if err := http.ListenAndServe(listenAddr, mux); err != nil {
 		log.Fatal(err)
 	}
+	}
 
+// pingHandler is the health check tool implementation.
+func pingHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return mcp.NewToolResultText("pong"), nil
 }
 
-// instrument wraps a tool handler with logging.
-func instrument(name string, h func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func instrument(
+	name string,
+	h func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error),
+) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-        start := time.Now()
-        res, err := h(ctx, req)
-        duration := time.Since(start)
-        
-        // Log asynchronously
-        resultCount := 0
-        if res != nil {
-            resultCount = len(res.Content)
-        }
-        
-        // Convert arguments to map[string]any with type assertion
-        args := make(map[string]any)
-        if req.Params.Arguments != nil {
-            if argsMap, ok := req.Params.Arguments.(map[string]any); ok {
-                args = argsMap
-            }
-        }
-        
-        // We do this in a goroutine to not block the response
-        LogQueryAsync(name, args, resultCount, duration, "claude-client") // simplistic client info
-        
-        return res, err
-    }
+
+		start := time.Now()
+
+		// Extract user info from MCP request arguments
+		userID := ""
+		userEmail := ""
+
+		if req.Params.Arguments != nil {
+
+			if args, ok := req.Params.Arguments.(map[string]any); ok {
+
+				if v, ok := args["user_id"].(string); ok {
+					userID = v
+				}
+
+				if v, ok := args["user_email"].(string); ok {
+					userEmail = v
+				}
+			}
+		}
+
+		// Execute tool
+		res, err := h(ctx, req)
+
+		duration := time.Since(start)
+
+		// Existing DuckDB analytics log
+		resultCount := 0
+		if res != nil {
+			resultCount = len(res.Content)
+		}
+
+		args := map[string]any{}
+		if req.Params.Arguments != nil {
+			if argsMap, ok := req.Params.Arguments.(map[string]any); ok {
+				args = argsMap
+			}
+		}
+
+		LogQueryAsync(name, args, resultCount, duration, "claude-client")
+
+		logAISessionWithUser(
+			name,
+			"",
+			duration.Milliseconds(),
+			err,
+			userID,
+			userEmail,
+		)
+
+		return res, err
+	}
 }

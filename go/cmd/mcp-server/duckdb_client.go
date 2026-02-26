@@ -12,55 +12,58 @@ import (
 
 var duckDB *sql.DB
 
-// initDuckDB initializes the DuckDB connection and attaches the Postgres database.
 func initDuckDB() error {
-	// Open DuckDB connection (in-memory)
-    // Note: "?access_mode=READ_WRITE" or similar flags can be used, but default is fine.
-    // If we want persistent logs, we might want a file path.
-    // The plan says "DuckDB (local audit log)". 
-    // Implementing purely in-memory for now as a robust default, 
-    // but allowing a path via DUCKDB_PATH if set.
-    
-    duckPath := os.Getenv("DUCKDB_PATH")
-    if duckPath == "" {
-        duckPath = "" // empty DSN creates in‑memory DuckDB
-    }
+
+	// 1. Resolve DuckDB path safely
+	duckPath := os.Getenv("DUCKDB_PATH")
+	if duckPath == "" {
+		duckPath = "./analytics.duckdb"
+	}
+
+	dsn := duckPath + "?access_mode=READ_WRITE"
 
 	var err error
-	duckDB, err = sql.Open("duckdb", duckPath)
+	duckDB, err = sql.Open("duckdb", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open duckdb: %w", err)
 	}
+
+	// 2. Production-safe connection pool config
+	duckDB.SetMaxOpenConns(1)  // DuckDB works best with single writer
+	duckDB.SetMaxIdleConns(1)
+	duckDB.SetConnMaxLifetime(0)
 
 	if err := duckDB.Ping(); err != nil {
 		return fmt.Errorf("failed to ping duckdb: %w", err)
 	}
 
-	// Install postgres extension (ignore error if already installed/bundled)
-	duckDB.Exec("INSTALL postgres;")
+	log.Printf("DuckDB initialized at %s", duckPath)
 
-    // Load postgres extension
-    if _, err := duckDB.Exec("LOAD postgres;"); err != nil {
-		return fmt.Errorf("failed to load postgres extension: %w", err)
+	// 3. Enable WAL checkpointing for durability
+	duckDB.Exec("PRAGMA wal_autocheckpoint=1000;")
+
+	// 4. Load postgres extension safely (non-fatal)
+	if _, err := duckDB.Exec("INSTALL postgres;"); err != nil {
+		log.Printf("Warning: postgres extension install failed: %v", err)
+	}
+	if _, err := duckDB.Exec("LOAD postgres;"); err != nil {
+		log.Printf("Warning: postgres extension load failed: %v", err)
 	}
 
-	// Attach Postgres database
-    // We reuse DATABASE_URL. DuckDB's postgres scanner often accepts libpq connection strings.
+	// 5. Attach Postgres if configured
 	pgURL := os.Getenv("DATABASE_URL")
 	if pgURL != "" {
-		// Attach as 'postgres_db'
-        // DuckDB 0.9+ supports ATTACH '...' AS name (TYPE POSTGRES)
-		query := fmt.Sprintf("ATTACH '%s' AS postgres_db (TYPE POSTGRES, READ_ONLY)", pgURL)
+		query := fmt.Sprintf(
+			"ATTACH '%s' AS postgres_db (TYPE POSTGRES, READ_ONLY)",
+			pgURL,
+		)
+
 		if _, err := duckDB.Exec(query); err != nil {
-            // Fallback - maybe it's already attached or error in string format
-			log.Printf("Warning: failed to attach postgres to duckdb: %v", err)
-            // We don't return error here to allow running with just local analytics if postgres fails
+			log.Printf("Warning: failed to attach postgres: %v", err)
 		} else {
-            log.Println("Attached PostgreSQL database to DuckDB as 'postgres_db'")
-        }
-	} else {
-        log.Println("Warning: DATABASE_URL not set, skipping Postgres attachment")
-    }
+			log.Println("PostgreSQL attached as postgres_db")
+		}
+	}
 
 	// Create sequence first, then the audit log table that references it
 	createSchemaQuery := `
@@ -78,6 +81,97 @@ func initDuckDB() error {
 	if _, err := duckDB.Exec(createSchemaQuery); err != nil {
 		return fmt.Errorf("failed to create audit log schema: %w", err)
 	}
+
+	// 6. Schema version table
+	_, err = duckDB.Exec(`
+	CREATE TABLE IF NOT EXISTS schema_version (
+		version INTEGER
+	);
+	`)
+	if err != nil {
+		return err
+	}
+
+	var version int
+	err = duckDB.QueryRow(`
+	SELECT COALESCE(MAX(version),0) FROM schema_version
+	`).Scan(&version)
+
+	if err != nil {
+		return err
+	}
+
+	// 7. Migration to version 2 (adds user info)
+	if version < 2 {
+
+		log.Println("Running schema migration to v2")
+
+		_, err = duckDB.Exec(`
+		CREATE SEQUENCE IF NOT EXISTS seq_query_log;
+
+		CREATE TABLE IF NOT EXISTS mcp_query_log (
+			id BIGINT DEFAULT nextval('seq_query_log'),
+			tool_name VARCHAR,
+			params JSON,
+			result_count INTEGER,
+			duration_ms DOUBLE,
+			client_info VARCHAR,
+			created_at TIMESTAMPTZ DEFAULT now()
+		);
+		`)
+		if err != nil {
+			return err
+		}
+
+		// AI log table with user info
+		_, err = duckDB.Exec(`
+		CREATE TABLE IF NOT EXISTS mcp_ai_query_log (
+			user_id TEXT,
+			user_email TEXT,
+			session_id TEXT,
+			timestamp TIMESTAMP,
+			tool_name TEXT,
+			generated_query TEXT,
+			duration_ms BIGINT,
+			commit_hash TEXT,
+			error TEXT
+		);
+		`)
+		if err != nil {
+			return err
+		}
+
+        indexes := []string{
+
+            `CREATE INDEX IF NOT EXISTS idx_ai_timestamp
+             ON mcp_ai_query_log(timestamp);`,
+        
+            `CREATE INDEX IF NOT EXISTS idx_ai_user
+             ON mcp_ai_query_log(user_id);`,
+        
+            `CREATE INDEX IF NOT EXISTS idx_ai_user_email
+             ON mcp_ai_query_log(user_email);`,
+        
+            `CREATE INDEX IF NOT EXISTS idx_ai_tool
+             ON mcp_ai_query_log(tool_name);`,
+        }        
+
+		for _, idx := range indexes {
+			duckDB.Exec(idx)
+		}
+
+		_, err = duckDB.Exec(`
+		DELETE FROM schema_version;
+
+        INSERT INTO schema_version(version) VALUES (2);
+
+		`)
+		if err != nil {
+			return err
+		}
+	}
+
+	log.Println("DuckDB schema ready")
 
 	return nil
 }
