@@ -1,0 +1,9 @@
+Seems we lost the AI disclaimer at the bottom of the replies?
+
+---
+
+At the end of any assist message. The assist iicon should be the safecast logo too. Not just blue dot with shadow.
+
+---
+
+Ddi you commit and deploy?
