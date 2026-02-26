@@ -69,16 +69,16 @@ func handleQueryExtremeReadings(ctx context.Context, req mcp.CallToolRequest) (*
 			SELECT
 				id,
 				doserate,
-				latitude,
-				longitude,
+				lat,
+				lon,
 				device_id,
 				to_timestamp(date)::TIMESTAMP AS captured_at,
-				track_id,
+				trackid,
 				detector
 			FROM postgres_db.public.markers
 			WHERE doserate > 0 AND doserate < 10000
-			  AND latitude BETWEEN %.6f AND %.6f
-			  AND longitude BETWEEN %.6f AND %.6f
+			  AND lat BETWEEN %.6f AND %.6f
+			  AND lon BETWEEN %.6f AND %.6f
 			ORDER BY doserate %s
 			LIMIT %d
 		`, minLat, maxLat, minLon, maxLon, orderDir, limit)
@@ -87,11 +87,11 @@ func handleQueryExtremeReadings(ctx context.Context, req mcp.CallToolRequest) (*
 			SELECT
 				id,
 				doserate,
-				latitude,
-				longitude,
+				lat,
+				lon,
 				device_id,
 				to_timestamp(date)::TIMESTAMP AS captured_at,
-				track_id,
+				trackid,
 				detector
 			FROM postgres_db.public.markers
 			WHERE doserate > 0 AND doserate < 10000
