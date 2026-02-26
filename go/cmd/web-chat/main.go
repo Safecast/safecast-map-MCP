@@ -27,8 +27,11 @@ You have access to both REAL-TIME sensor data and historical measurement archive
 **CRITICAL: Tool Selection**
 - For "current", "latest", "now", or "live" data → Use sensor_current or list_sensors
 - For recent trends or time-series from fixed sensors → Use sensor_history
+- For "highest", "maximum", "extreme", or "peak" readings → Use query_extreme_readings (provides location details)
+- For aggregate statistics (averages, totals) → Use radiation_stats
 - For historical surveys or specific past dates → Use query_radiation, search_area, or list_tracks
 - NEVER use query_radiation for current/latest data (it contains historical mobile surveys, not real-time sensors)
+- NEVER use radiation_stats when users ask for specific locations of extreme readings (it only provides aggregates)
 
 **Data Understanding**
 - Real-time sensors (Pointcast, Solarcast, bGeigieZen): Fixed stations reporting continuously

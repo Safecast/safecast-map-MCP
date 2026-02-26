@@ -1,10 +1,10 @@
 # Safecast MCP Server connecting to simplemap.safecast.org V0.9
 
-An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 15 tools for querying both real-time sensor readings and historical radiation measurements, browsing sensor tracks, spectroscopy data, analytics, and educational reference data.
+An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 16 tools for querying both real-time sensor readings and historical radiation measurements, browsing sensor tracks, spectroscopy data, analytics, and educational reference data.
 
 ## Features
 
-- **15 tools** for querying Safecast radiation data
+- **16 tools** for querying Safecast radiation data
 - **Real-time and historical data access**: Query both real-time sensor readings and historical measurements
 - **Dual transport**: SSE and Streamable HTTP (works with Claude.ai)
 - **PostgreSQL + PostGIS** for fast spatial queries (with REST API fallback)
@@ -28,6 +28,7 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 | `get_spectrum` | Historical | Get full spectroscopy channel data for a measurement |
 | `radiation_info` | Reference | Educational reference (units, safety levels, detectors, isotopes) |
 | `radiation_stats` | Aggregate | Aggregate radiation statistics by year/month |
+| `query_extreme_readings` | Aggregate | Find highest/lowest radiation readings with full location details |
 | `query_analytics` | Analytics | Server usage statistics (call counts, durations) |
 | `db_info` | Diagnostic | Database connection and status (diagnostic) |
 | `ping` | Diagnostic | Health check |
@@ -301,6 +302,33 @@ Get aggregate radiation statistics from the Safecast database grouped by time in
 
 ---
 
+### query_extreme_readings
+
+Find the highest or lowest radiation readings in the database with full location details. Unlike `radiation_stats` which provides aggregates, this tool returns specific measurements with coordinates, device IDs, and timestamps. Powered by DuckDB + PostgreSQL.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `direction` | string | No | `"highest"` | `"highest"` for maximum readings or `"lowest"` for minimum readings |
+| `limit` | number | No | 10 | Number of readings to return (1 to 100) |
+| `min_lat` | number | No | -90 | Southern boundary for optional geographic filter |
+| `max_lat` | number | No | 90 | Northern boundary for optional geographic filter |
+| `min_lon` | number | No | -180 | Western boundary for optional geographic filter |
+| `max_lon` | number | No | 180 | Eastern boundary for optional geographic filter |
+
+**Example**: Find the 20 highest readings globally:
+```json
+{"name": "query_extreme_readings", "arguments": {"direction": "highest", "limit": 20}}
+```
+
+**Example**: Find the 10 highest readings in Japan (Fukushima region):
+```json
+{"name": "query_extreme_readings", "arguments": {"direction": "highest", "limit": 10, "min_lat": 36.5, "max_lat": 38.5, "min_lon": 140.0, "max_lon": 141.5}}
+```
+
+Each result includes: `id`, `value` (µSv/h), `location` (lat/lon), `captured_at`, `device_id`, `track_id`, and `detector`.
+
+---
+
 ### query_analytics
 
 Get usage statistics for all MCP tools including call counts, average duration, and max duration. Powered by DuckDB local logs. No parameters required.
@@ -350,6 +378,7 @@ The server also exposes a standard REST API on the same port as the MCP endpoint
 | GET | `/api/spectra` | Browse gamma spectroscopy records |
 | GET | `/api/spectrum/{marker_id}` | Full spectroscopy channel data |
 | GET | `/api/stats` | Aggregate radiation statistics |
+| GET | `/api/extreme` | Find highest/lowest readings with locations |
 | GET | `/api/info/{topic}` | Reference information (units, safety levels, etc.) |
 | GET | `/docs/` | Interactive Swagger UI |
 | GET | `/docs/doc.json` | Raw OpenAPI spec |
@@ -396,6 +425,82 @@ Open `http://localhost:3333/docs/` for the interactive Swagger UI.
 
 - **SSE**: `/mcp/sse` (GET) and `/mcp/message` (POST)
 - **Streamable HTTP**: `/mcp-http` (POST)
+
+## Safecast Radiation Assistant (Web Chat)
+
+The Safecast MCP server includes a web-based AI assistant that provides a friendly, conversational interface to query radiation data. The assistant uses **Claude Haiku 4.5** for fast, cost-effective responses while accessing the full MCP toolset.
+
+**Try it now:** [https://simplemap.safecast.org/](https://simplemap.safecast.org/) *(web chat interface)*
+
+### Sample Questions
+
+The assistant can help with a wide variety of radiation-related queries:
+
+**Real-time Sensor Data:**
+- "What's the current radiation level near Tokyo?"
+- "Show me all active sensors in Fukushima prefecture"
+- "What are the latest readings in Osaka?"
+- "Is there a sensor near my coordinates 35.6762, 139.6503?"
+
+**Historical Measurements:**
+- "What are the highest radiation readings ever recorded?"
+- "Show me measurements from Fukushima in March 2011"
+- "Find radiation data near Chernobyl"
+- "What was the average radiation level in Tokyo in 2020?"
+
+**Sensor Trends & Time Series:**
+- "Show me the radiation trend for sensor pointcast:10042 over the past week"
+- "How has radiation changed at this location over the past year?"
+- "Compare radiation levels between 2012 and 2024"
+
+**Spectroscopy Data:**
+- "Find gamma spectroscopy measurements near Fukushima"
+- "Show me spectrum files from track 8eh5m1"
+- "What isotopes were detected in this area?"
+
+**Aggregate Statistics:**
+- "How does radiation compare year over year?"
+- "What's the global average background radiation?"
+- "Show me monthly statistics for 2023"
+
+**Educational & Reference:**
+- "What's the difference between µSv/h and CPM?"
+- "What are safe radiation levels?"
+- "Explain how radiation detectors work"
+- "What's normal background radiation?"
+
+### Features
+
+- **Conversational Interface**: Ask questions in natural language
+- **Real-time & Historical Data**: Access both live sensor readings and archived measurements
+- **Smart Tool Selection**: Automatically uses the right tools based on your query
+- **Formatted Tables**: Sensor data displayed in clean, readable markdown tables
+- **Clickable Map Links**: Device IDs and coordinates link directly to the map
+- **Download Conversations**: Save your chat history as markdown
+- **AI Disclaimer**: All responses include a note about AI-generated content
+
+### Running Your Own Web Chat
+
+The web chat server is included in the `go/cmd/web-chat/` directory:
+
+```bash
+cd go/cmd/web-chat
+export ANTHROPIC_API_KEY=sk-ant-...
+export MCP_URL=http://localhost:3333/mcp-http  # optional
+export CLAUDE_MODEL=claude-haiku-4-5-20251001  # optional (default: claude-sonnet-4-5)
+export PORT=3334                               # optional
+go run main.go
+```
+
+Then open `http://localhost:3334` in your browser.
+
+**Environment Variables:**
+- `ANTHROPIC_API_KEY` (required): Your Anthropic API key
+- `MCP_URL` (optional): MCP server endpoint (default: `http://localhost:3333/mcp-http`)
+- `CLAUDE_MODEL` (optional): Claude model to use (default: `claude-sonnet-4-5`)
+- `PORT` (optional): Web server port (default: `3334`)
+
+**Note:** The production deployment at `simplemap.safecast.org` uses Claude Haiku 4.5 for optimal performance and cost efficiency.
 
 ## Connecting Claude to the MCP
 

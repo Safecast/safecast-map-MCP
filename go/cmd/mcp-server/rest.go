@@ -63,6 +63,7 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 
 	// Reference / stats
 	mux.HandleFunc("/api/stats", h.handleStats)
+	mux.HandleFunc("/api/extreme", handleRESTExtremeReadings)
 	mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
 
 	// GPT-optimised compact endpoints (for Custom GPT Actions)

@@ -61,6 +61,7 @@ func main() {
 	mcpServer.AddTool(queryAnalyticsToolDef, instrument("query_analytics", handleQueryAnalytics))
 	mcpServer.AddTool(radiationStatsToolDef, instrument("radiation_stats", handleRadiationStats))
 	mcpServer.AddTool(queryDuckDBLogsToolDef, instrument("query_duckdb_logs", handleQueryDuckDBLogs))
+	mcpServer.AddTool(queryExtremeReadingsToolDef, instrument("query_extreme_readings", handleQueryExtremeReadings))
 
 	// 🚨 TRANSPORT SWITCH
 	if os.Getenv("MCP_TRANSPORT") == "stdio" {
