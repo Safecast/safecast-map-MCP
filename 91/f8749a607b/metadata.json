@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "91f8749a607b",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".gitignore",
+    "go/cmd/mcp-server/duckdb_client.go",
+    "go/cmd/mcp-server/main.go",
+    "go/cmd/mcp-server/tool_analytics.go",
+    "go/go.mod",
+    "go/go.sum"
+  ],
+  "sessions": [
+    {
+      "metadata": "/91/f8749a607b/0/metadata.json",
+      "transcript": "/91/f8749a607b/0/full.jsonl",
+      "context": "/91/f8749a607b/0/context.md",
+      "content_hash": "/91/f8749a607b/0/content_hash.txt",
+      "prompt": "/91/f8749a607b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 366,
+    "cache_creation_tokens": 69509,
+    "cache_read_tokens": 2436896,
+    "output_tokens": 94,
+    "api_call_count": 44
+  }
+}

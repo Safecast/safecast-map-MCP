@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "91f8749a607b",
+  "session_id": "4df2f39a-53b2-4edb-8759-ac9db246bd91",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T06:19:42.80023907Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".gitignore",
+    "go/cmd/mcp-server/duckdb_client.go",
+    "go/cmd/mcp-server/main.go",
+    "go/cmd/mcp-server/tool_analytics.go",
+    "go/go.mod",
+    "go/go.sum"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "485f2508-8088-46a7-8757-68da6c0a74bd",
+  "token_usage": {
+    "input_tokens": 366,
+    "cache_creation_tokens": 69509,
+    "cache_read_tokens": 2436896,
+    "output_tokens": 94,
+    "api_call_count": 44
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T06:19:42.754300835Z",
+    "agent_lines": 0,
+    "human_added": 102,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 102,
+    "agent_percentage": 0
+  }
+}
