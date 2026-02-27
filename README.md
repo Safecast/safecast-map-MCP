@@ -349,15 +349,20 @@ Each result includes: `id`, `value` (µSv/h), `location` (lat/lon), `captured_at
 
 ### top_uploaders
 
-Get statistics about which users or devices uploaded the most radiation measurement data to Safecast. Returns aggregated upload counts, file sizes, and primary devices used by each uploader.
+Get statistics about which users or devices uploaded the most radiation measurement data to Safecast. Returns aggregated upload counts, individual marker counts, file sizes, and primary devices used by each uploader.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `limit` | number | No | 20 | Maximum number of top uploaders to return (1 to 100) |
-| `sort_by` | string | No | upload_count | Sort by 'upload_count' (number of tracks) or 'total_size' (total data in bytes) |
+| `sort_by` | string | No | marker_count | Sort by 'upload_count' (tracks), 'marker_count' (individual measurements), or 'total_size' (data in bytes) |
 | `year` | number | No | | Filter by year (e.g., 2024, 2026) |
 
-**Example**: Get top 10 uploaders by track count:
+**Example**: Get top 10 uploaders by individual measurement count:
+```json
+{"name": "top_uploaders", "arguments": {"limit": 10, "sort_by": "marker_count"}}
+```
+
+**Example**: Get top uploaders by track count:
 ```json
 {"name": "top_uploaders", "arguments": {"limit": 10, "sort_by": "upload_count"}}
 ```
@@ -367,7 +372,13 @@ Get statistics about which users or devices uploaded the most radiation measurem
 {"name": "top_uploaders", "arguments": {"limit": 20, "sort_by": "total_size", "year": 2026}}
 ```
 
-Each result includes: `username`, `upload_count` (number of tracks), `total_size_mb` (total data in megabytes), `devices` (array of device names), and `primary_device` (most used device or "Multiple").
+Each result includes:
+- `username`: Uploader name
+- `upload_count`: Number of track files (survey routes) uploaded
+- `marker_count`: Total number of individual measurement points across all tracks
+- `total_size_mb`: Total data in megabytes
+- `devices`: Array of device names used
+- `primary_device`: Most used device or "Multiple"
 
 ---
 

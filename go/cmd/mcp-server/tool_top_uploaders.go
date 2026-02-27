@@ -8,16 +8,16 @@ import (
 )
 
 var topUploadersToolDef = mcp.NewTool("top_uploaders",
-	mcp.WithDescription("Get statistics about which users or devices uploaded the most radiation measurement data to Safecast. Returns aggregated upload counts, file sizes, and primary devices used by each uploader. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
+	mcp.WithDescription("Get statistics about which users or devices uploaded the most radiation measurement data to Safecast. Returns aggregated upload counts, individual marker counts, file sizes, and primary devices used by each uploader. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool."),
 	mcp.WithNumber("limit",
 		mcp.Description("Maximum number of top uploaders to return (default: 20, max: 100)"),
 		mcp.Min(1), mcp.Max(100),
 		mcp.DefaultNumber(20),
 	),
 	mcp.WithString("sort_by",
-		mcp.Description("Sort by 'upload_count' (number of tracks) or 'total_size' (total data in bytes). Default: upload_count"),
-		mcp.Enum("upload_count", "total_size"),
-		mcp.DefaultString("upload_count"),
+		mcp.Description("Sort by 'upload_count' (number of tracks), 'marker_count' (number of individual measurements), or 'total_size' (total data in bytes). Default: marker_count"),
+		mcp.Enum("upload_count", "marker_count", "total_size"),
+		mcp.DefaultString("marker_count"),
 	),
 	mcp.WithNumber("year",
 		mcp.Description("Filter by year (e.g., 2024, 2026). Optional."),
@@ -32,7 +32,7 @@ func handleTopUploaders(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	}
 
 	limit := req.GetInt("limit", 20)
-	sortBy := req.GetString("sort_by", "upload_count")
+	sortBy := req.GetString("sort_by", "marker_count")
 	year := req.GetInt("year", 0)
 
 	if limit < 1 || limit > 100 {
@@ -42,17 +42,19 @@ func handleTopUploaders(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 		return mcp.NewToolResultError("Year must be between 2000 and 2100"), nil
 	}
 
-	// Build the query
+	// Build the query - joins uploads with markers to count individual measurement points
 	query := `
 		WITH uploader_stats AS (
 			SELECT
 				COALESCE(usr.username, u.username, 'Unknown') AS username,
 				u.internal_user_id,
-				COUNT(*) AS upload_count,
+				COUNT(DISTINCT u.id) AS upload_count,
 				SUM(COALESCE(u.file_size, 0)) AS total_size,
+				COUNT(DISTINCT m.id) AS marker_count,
 				array_agg(DISTINCT u.detector ORDER BY u.detector) FILTER (WHERE u.detector IS NOT NULL) AS devices
 			FROM uploads u
 			LEFT JOIN users usr ON u.internal_user_id = usr.id::text
+			LEFT JOIN markers m ON u.track_id = m.track_id
 			WHERE 1=1`
 
 	args := []any{}
@@ -71,6 +73,7 @@ func handleTopUploaders(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 		SELECT
 			username,
 			upload_count,
+			marker_count,
 			total_size,
 			devices,
 			CASE
@@ -82,9 +85,11 @@ func handleTopUploaders(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 
 	// Add ORDER BY clause based on sort_by parameter
 	if sortBy == "total_size" {
-		query += " ORDER BY total_size DESC, upload_count DESC"
+		query += " ORDER BY total_size DESC, marker_count DESC"
+	} else if sortBy == "marker_count" {
+		query += " ORDER BY marker_count DESC, upload_count DESC"
 	} else {
-		query += " ORDER BY upload_count DESC, total_size DESC"
+		query += " ORDER BY upload_count DESC, marker_count DESC"
 	}
 
 	query += fmt.Sprintf(" LIMIT $%d", argIdx)
@@ -98,10 +103,11 @@ func handleTopUploaders(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	uploaders := make([]map[string]any, 0, len(rows))
 	for _, r := range rows {
 		uploader := map[string]any{
-			"username":      r["username"],
-			"upload_count":  r["upload_count"],
-			"total_size_mb": bytesToMB(r["total_size"]),
-			"devices":       r["devices"],
+			"username":       r["username"],
+			"upload_count":   r["upload_count"],
+			"marker_count":   r["marker_count"],
+			"total_size_mb":  bytesToMB(r["total_size"]),
+			"devices":        r["devices"],
 			"primary_device": r["primary_device"],
 		}
 		uploaders = append(uploaders, uploader)
@@ -114,7 +120,7 @@ func handleTopUploaders(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 		"filters": map[string]any{
 			"year": nilIfZero(year),
 		},
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements. (3) When presenting uploader statistics, the 'upload_count' represents the number of track files uploaded, and 'total_size_mb' represents the total data volume in megabytes.",
+		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements. (3) When presenting uploader statistics: 'upload_count' = number of track files (survey routes) uploaded, 'marker_count' = total number of individual measurement points across all tracks, 'total_size_mb' = total data volume in megabytes.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
