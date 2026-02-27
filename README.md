@@ -29,6 +29,7 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 | `radiation_info` | Reference | Educational reference (units, safety levels, detectors, isotopes) |
 | `radiation_stats` | Aggregate | Aggregate radiation statistics by year/month |
 | `query_extreme_readings` | Aggregate | Find highest/lowest radiation readings with full location details |
+| `top_uploaders` | Aggregate | Statistics on which users/devices uploaded the most data |
 | `query_analytics` | Analytics | Server usage statistics (call counts, durations) |
 | `db_info` | Diagnostic | Database connection and status (diagnostic) |
 | `ping` | Diagnostic | Health check |
@@ -343,6 +344,30 @@ Find the highest or lowest radiation readings in the database with full location
 ```
 
 Each result includes: `id`, `value` (µSv/h), `location` (lat/lon), `captured_at`, `device_id`, `track_id`, and `detector`.
+
+---
+
+### top_uploaders
+
+Get statistics about which users or devices uploaded the most radiation measurement data to Safecast. Returns aggregated upload counts, file sizes, and primary devices used by each uploader.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `limit` | number | No | 20 | Maximum number of top uploaders to return (1 to 100) |
+| `sort_by` | string | No | upload_count | Sort by 'upload_count' (number of tracks) or 'total_size' (total data in bytes) |
+| `year` | number | No | | Filter by year (e.g., 2024, 2026) |
+
+**Example**: Get top 10 uploaders by track count:
+```json
+{"name": "top_uploaders", "arguments": {"limit": 10, "sort_by": "upload_count"}}
+```
+
+**Example**: Get top uploaders by total data size in 2026:
+```json
+{"name": "top_uploaders", "arguments": {"limit": 20, "sort_by": "total_size", "year": 2026}}
+```
+
+Each result includes: `username`, `upload_count` (number of tracks), `total_size_mb` (total data in megabytes), `devices` (array of device names), and `primary_device` (most used device or "Multiple").
 
 ---
 
