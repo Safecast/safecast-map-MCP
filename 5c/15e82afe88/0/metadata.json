@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "5c15e82afe88",
+  "session_id": "ba492de5-dae3-4266-bb89-fd5c858092c4",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-27T15:27:02.305693969Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md",
+    "go/cmd/mcp-server/tool_top_uploaders.go"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "d359b9d6-6701-4612-851c-6ae48e06d2ca",
+  "checkpoint_transcript_start": 1006,
+  "transcript_lines_at_start": 1006,
+  "token_usage": {
+    "input_tokens": 164,
+    "cache_creation_tokens": 14652,
+    "cache_read_tokens": 2449597,
+    "output_tokens": 49,
+    "api_call_count": 20
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-27T15:27:02.137132847Z",
+    "agent_lines": 0,
+    "human_added": 123,
+    "human_modified": 18,
+    "human_removed": 0,
+    "total_committed": 123,
+    "agent_percentage": 0
+  }
+}
