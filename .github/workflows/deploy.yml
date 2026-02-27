@@ -56,6 +56,11 @@ jobs:
 
           # ── .env for web-chat ───────────────────────────────────────────────
           $SSH "mkdir -p /root/safecast-web-chat-server"
+
+          # Debug: Check OpenClaw auth file
+          echo "Checking OpenClaw auth file..."
+          $SSH "if [ -f /root/.openclaw/agents/main/agent/auth.json ]; then echo 'File exists'; cat /root/.openclaw/agents/main/agent/auth.json | head -10; else echo 'File not found'; fi"
+
           # Write the .env file with the API key from GitHub secrets
           printf '%s\n' \
             "MCP_URL=http://localhost:3333/mcp-http" \
