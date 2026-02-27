@@ -349,36 +349,45 @@ Each result includes: `id`, `value` (µSv/h), `location` (lat/lon), `captured_at
 
 ### top_uploaders
 
-Get statistics about which users or devices uploaded the most radiation measurement data to Safecast. Returns aggregated upload counts, individual marker counts, file sizes, and primary devices used by each uploader.
+Get statistics about which users or devices uploaded the most radiation measurement data to Safecast. Supports grouping by user (default) or device. Returns aggregated upload counts, individual marker counts, file sizes, and associated devices/users.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `limit` | number | No | 20 | Maximum number of top uploaders to return (1 to 100) |
-| `sort_by` | string | No | marker_count | Sort by 'upload_count' (tracks), 'marker_count' (individual measurements), or 'total_size' (data in bytes) |
+| `limit` | number | No | 20 | Maximum number of results to return (1 to 100) |
+| `sort_by` | string | No | marker_count | Sort by 'upload_count' (tracks), 'marker_count' (measurements), or 'total_size' (data size) |
+| `group_by` | string | No | user | Group by 'user' (uploader) or 'device' (individual device) |
 | `year` | number | No | | Filter by year (e.g., 2024, 2026) |
 
-**Example**: Get top 10 uploaders by individual measurement count:
+**Example**: Get top 10 users by measurement count:
 ```json
-{"name": "top_uploaders", "arguments": {"limit": 10, "sort_by": "marker_count"}}
+{"name": "top_uploaders", "arguments": {"limit": 10, "group_by": "user", "sort_by": "marker_count"}}
 ```
 
-**Example**: Get top uploaders by track count:
+**Example**: Get top devices by measurement count:
 ```json
-{"name": "top_uploaders", "arguments": {"limit": 10, "sort_by": "upload_count"}}
+{"name": "top_uploaders", "arguments": {"limit": 10, "group_by": "device", "sort_by": "marker_count"}}
 ```
 
-**Example**: Get top uploaders by total data size in 2026:
+**Example**: Get top devices by track count in 2026:
 ```json
-{"name": "top_uploaders", "arguments": {"limit": 20, "sort_by": "total_size", "year": 2026}}
+{"name": "top_uploaders", "arguments": {"limit": 20, "group_by": "device", "sort_by": "upload_count", "year": 2026}}
 ```
 
-Each result includes:
+**When grouped by user**, each result includes:
 - `username`: Uploader name
-- `upload_count`: Number of track files (survey routes) uploaded
-- `marker_count`: Total number of individual measurement points across all tracks
+- `upload_count`: Number of track files uploaded
+- `marker_count`: Total individual measurement points
 - `total_size_mb`: Total data in megabytes
 - `devices`: Array of device names used
 - `primary_device`: Most used device or "Multiple"
+
+**When grouped by device**, each result includes:
+- `device_name`: Device identifier (e.g., "bGeigie-5149")
+- `upload_count`: Number of track files from this device
+- `marker_count`: Total individual measurement points
+- `total_size_mb`: Total data in megabytes
+- `users`: Array of usernames who used this device
+- `primary_user`: Main user of this device or "Multiple"
 
 ---
 
