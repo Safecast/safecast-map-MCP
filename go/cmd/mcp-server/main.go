@@ -63,6 +63,7 @@ func main() {
 	mcpServer.AddTool(queryDuckDBLogsToolDef, instrument("query_duckdb_logs", handleQueryDuckDBLogs))
 	mcpServer.AddTool(queryExtremeReadingsToolDef, instrument("query_extreme_readings", handleQueryExtremeReadings))
 	mcpServer.AddTool(topUploadersToolDef, instrument("top_uploaders", handleTopUploaders))
+	mcpServer.AddTool(searchTracksLocationToolDef, instrument("search_tracks_by_location", handleSearchTracksByLocation))
 
 	// 🚨 TRANSPORT SWITCH
 	if os.Getenv("MCP_TRANSPORT") == "stdio" {

@@ -1,10 +1,10 @@
 # Safecast MCP Server connecting to simplemap.safecast.org V0.9
 
-An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 16 tools for querying both real-time sensor readings and historical radiation measurements, browsing sensor tracks, spectroscopy data, analytics, and educational reference data.
+An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.org) radiation monitoring data to AI assistants like Claude. The server provides 17 tools for querying both real-time sensor readings and historical radiation measurements, browsing sensor tracks, spectroscopy data, analytics, and educational reference data.
 
 ## Features
 
-- **16 tools** for querying Safecast radiation data
+- **17 tools** for querying Safecast radiation data
 - **Real-time and historical data access**: Query both real-time sensor readings and historical measurements
 - **Dual transport**: SSE and Streamable HTTP (works with Claude.ai)
 - **PostgreSQL + PostGIS** for fast spatial queries (with REST API fallback)
@@ -33,6 +33,7 @@ An MCP (Model Context Protocol) server that exposes [Safecast](https://safecast.
 | `query_analytics` | Analytics | Server usage statistics (call counts, durations) |
 | `db_info` | Diagnostic | Database connection and status (diagnostic) |
 | `ping` | Diagnostic | Health check |
+| `search_tracks_by_location` | Historical | Find measurement tracks by country name or bounding box |
 
 ## Real-time Data Access
 
@@ -103,6 +104,42 @@ Browse bGeigie Import tracks (bulk radiation measurement drives/journeys). Each 
 ```
 
 Each result includes: `track_id`, `name`, `description`, `city`, `measurement_count`, `created_at`, and status info.
+
+---
+
+### search_tracks_by_location
+
+Find bGeigie measurement tracks by country name or geographic bounding box. This tool searches for radiation measurement journeys (tracks) that were recorded within a specified geographic area. Use country name for convenient searching, or provide bounding box coordinates for precise control.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `country` | string | No | | Country name to search for (e.g., 'South Africa', 'Japan', 'Germany'). Case-insensitive. Uses predefined bounding boxes for 80+ countries. |
+| `min_lat` | number | No | -90 | Southern boundary latitude (use with country for custom area, or alone for precise control) |
+| `max_lat` | number | No | 90 | Northern boundary latitude |
+| `min_lon` | number | No | -180 | Western boundary longitude |
+| `max_lon` | number | No | 180 | Eastern boundary longitude |
+| `year` | number | No | | Filter tracks by year (e.g., 2024) |
+| `month` | number | No | | Filter tracks by month (1-12, requires year parameter) |
+| `limit` | number | No | 50 | Max results (1 to 50,000) |
+
+**Example**: Find all tracks from South Africa:
+```json
+{"name": "search_tracks_by_location", "arguments": {"country": "South Africa"}}
+```
+
+**Example**: Find tracks from Japan in 2024:
+```json
+{"name": "search_tracks_by_location", "arguments": {"country": "Japan", "year": 2024}}
+```
+
+**Example**: Find tracks in a custom bounding box (Tokyo area):
+```json
+{"name": "search_tracks_by_location", "arguments": {"min_lat": 35.5, "max_lat": 35.8, "min_lon": 139.5, "max_lon": 139.9, "limit": 100}}
+```
+
+Each result includes: `track_id`, `filename`, `detector`, `file_size`, `recording_date`, `created_at`, `username` (uploader), `centroid` (approximate center of track), and optional `uploader` object with username and email.
+
+> **Note**: Requires database connection. Country name lookup supports 80+ countries including South Africa, USA, Japan, Germany, France, UK, Australia, and many more.
 
 ---
 
