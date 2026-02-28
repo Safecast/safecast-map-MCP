@@ -1,0 +1,86 @@
+Do you remember we made a mermaid map if the intergation of the MCP server and the Map server?
+
+---
+
+Let me give it to you.
+
+---
+
+I added it in doc folder
+
+---
+
+/home/rob/Documents/Safecast/safecast-new-map/docs/Mermaid Chart - Create complex, visual diagrams with text.-2026-02-28-041702.svg
+
+---
+
+Th mermaid file is this ---
+config:
+  layout: elk
+  theme: neutral
+  look: neo
+---
+flowchart TB
+ subgraph AI["🤖 AI Bots / Clients"]
+        Claude["Claude.ai / Claude Code"]
+        Other["Other MCP Clients"]
+  end
+ subgraph CDN["☁️ CloudFront CDN"]
+        CF["simplemap.safecast.org\n(HTTP/HTTPS only)"]
+  end
+ subgraph MCP["safecast-map-MCP (port 3333)"]
+        MCPTools["15 MCP Tools\n(radiation, sensors, tracks, spectra)"]
+        REST_MCP["REST API + Swagger\n/api/* /docs/"]
+        DuckDB["DuckDB\n(analytics & logging)"]
+  end
+ subgraph MapServer["safecast-new-map (port 8765)"]
+        MapUI["Interactive Map UI"]
+        REST_Map["REST API\n/api/tracks /api/stats /api/json/..."]
+        Fetcher["bGeigie Auto-Sync\n(-safecast-fetcher)"]
+        RTPoller["Real-time Sensor Poller\n(-safecast-realtime)"]
+  end
+ subgraph DB["🗄️ PostgreSQL + PostGIS"]
+        markers["markers table\n(historical bGeigie data)"]
+        realtime["realtime_measurements\n(fixed sensors)"]
+        spectra["spectra table\n(gamma spectroscopy)"]
+  end
+ subgraph Server["🖥️ simplemap.safecast.org (65.108.24.131)"]
+        MCP
+        MapServer
+        DB
+  end
+ subgraph Devices["📡 Radiation Sensors"]
+        bGeigie["bGeigie Nano/Zen\n(mobile survey)"]
+        Fixed["Pointcast / Solarcast\n(fixed stations)"]
+  end
+ subgraph CICD["⚙️ GitHub Actions (CI/CD)"]
+        GH_MCP["safecast-map-MCP\n→ cross-compile + deploy"]
+        GH_Map["safecast-new-map\n→ cross-compile + deploy"]
+  end
+    MCPTools --> DuckDB
+    MCPTools -- primary: localhost queries --> DB
+    MapServer --> DB
+    Fetcher -- "auto-sync approved imports" --> DB
+    RTPoller -- poll live sensors --> realtime
+    Claude -- "MCP protocol\n/mcp-http (streamable HTTP)\n/mcp/sse (SSE)" --> CF
+    Other -- MCP protocol --> CF
+    CF -- proxy → port 3333 --> MCP
+    MCPTools -- fallback: REST API --> REST_Map
+    Users["👥 Public Users"] -- HTTPS --> CF
+    CF -- proxy → port 8765 --> MapUI
+    bGeigie -- upload tracks --> REST_Map
+    Fixed -- "real-time readings" --> RTPoller
+    GH_MCP -- rsync → IP direct --> Server
+    GH_Map -- rsync → IP direct --> Server
+
+---
+
+can you recreate the mermaid file and save that?
+
+---
+
+can you also add the assistant.safecast.org information?
+
+---
+
+yes, domain for the webchat.
