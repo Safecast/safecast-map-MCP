@@ -20,7 +20,6 @@ flowchart TB
   end
  subgraph CDN["☁️ CloudFront CDN"]
         CF["simplemap.safecast.org\n(HTTP/HTTPS only)"]
-        Assistant["assistant.safecast.org\n(web chat interface)"]
   end
  subgraph MCP["safecast-map-MCP (port 3333)"]
         MCPTools["16 MCP Tools\n(radiation, sensors, tracks, spectra)"]
@@ -67,9 +66,8 @@ flowchart TB
     CF -- proxy → port 3333 --> MCP
     MCPTools -- fallback: REST API --> REST_Map
     Users["👥 Public Users"] -- HTTPS --> CF
-    CF -- proxy → port 8765 --> MapUI
-    WebUsers["💬 Web Chat Users"] -- HTTPS --> Assistant
-    Assistant -- proxy → port 3334 --> ChatUI
+    CF -- "proxy → port 8765" --> MapUI
+    CF -- "proxy → /assistant/\n(nginx → port 3334)" --> ChatUI
     ClaudeAPI -- "localhost MCP calls" --> MCPTools
     bGeigie -- upload tracks --> REST_Map
     Fixed -- "real-time readings" --> RTPoller
@@ -88,12 +86,13 @@ flowchart TB
 - **Public Users**: Web browser access to the interactive map
 
 ### CloudFront CDN
-- **simplemap.safecast.org**: Public-facing domain for map UI and MCP server
+- **simplemap.safecast.org**: Public-facing domain for all services
   - Provides HTTPS termination and caching
-  - Proxies to port 8765 (Map UI) and port 3333 (MCP server)
-- **assistant.safecast.org**: Web chat interface domain
-  - Provides HTTPS termination
-  - Proxies to port 3334 (Web Chat)
+  - Routes to nginx reverse proxy on server
+  - Nginx proxies to:
+    - Port 8765 (Map UI) for main site
+    - Port 3333 (MCP server) for /mcp-http and /api endpoints
+    - Port 3334 (Web Chat) for /assistant/ path
 
 ### MCP Server (port 3333)
 - **16 MCP Tools**: Comprehensive radiation data query capabilities
@@ -142,7 +141,8 @@ flowchart TB
 - **Chat Interface**: HTML/JavaScript conversational interface
 - **Claude API Client**: Uses Claude Haiku 4.5 for optimal cost/performance
 - **MCP Integration**: Connects to MCP server via localhost:3333
-- **Public Access**: Available at assistant.safecast.org
+- **Public Access**: Available at `https://simplemap.safecast.org/assistant/`
+- **Reverse Proxy**: Nginx proxies /assistant/ to localhost:3334
 - **Features**:
   - Natural language queries about radiation data
   - Interactive conversations with AI assistant
@@ -202,12 +202,12 @@ flowchart TB
 3. **Data Access**
    - **MCP Clients** (Claude.ai, Claude Code, etc.): Query via MCP protocol (SSE or streamable HTTP)
    - **Web Users**: Access interactive map via `https://simplemap.safecast.org`
-   - **Web Chat Users**: Access AI assistant via `https://assistant.safecast.org`
+   - **Web Chat Users**: Access AI assistant via `https://simplemap.safecast.org/assistant/`
    - All database queries use localhost PostgreSQL connection for optimal performance
 
 4. **Web Chat Flow**
-   - User sends message to assistant.safecast.org
-   - Web chat server receives request
+   - User accesses simplemap.safecast.org/assistant/
+   - Nginx proxies request to port 3334
    - Claude API processes message with MCP tool context
    - MCP tools query PostgreSQL database via localhost
    - Response formatted with clickable map links
@@ -224,7 +224,7 @@ flowchart TB
 - **Deployment Method**: GitHub Actions → rsync over SSH using `setsid` to prevent SSH hangs
 - **Health Checks**:
   - MCP: POST to `https://simplemap.safecast.org/mcp-http` with MCP initialize request
-  - Web Chat: GET to `https://assistant.safecast.org/` (HTTP 200 expected)
+  - Web Chat: GET to `http://localhost:3334/health` (HTTP 200 expected)
 - **Required Secrets**:
   - `SSH_PRIVATE_KEY`: For deployment authentication
   - `MAP_SERVER_HOST`: Server IP (65.108.24.131)

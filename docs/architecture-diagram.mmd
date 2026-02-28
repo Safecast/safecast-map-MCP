@@ -11,7 +11,6 @@ flowchart TB
   end
  subgraph CDN["☁️ CloudFront CDN"]
         CF["simplemap.safecast.org\n(HTTP/HTTPS only)"]
-        Assistant["assistant.safecast.org\n(web chat interface)"]
   end
  subgraph MCP["safecast-map-MCP (port 3333)"]
         MCPTools["16 MCP Tools\n(radiation, sensors, tracks, spectra)"]
@@ -58,9 +57,8 @@ flowchart TB
     CF -- proxy → port 3333 --> MCP
     MCPTools -- fallback: REST API --> REST_Map
     Users["👥 Public Users"] -- HTTPS --> CF
-    CF -- proxy → port 8765 --> MapUI
-    WebUsers["💬 Web Chat Users"] -- HTTPS --> Assistant
-    Assistant -- proxy → port 3334 --> ChatUI
+    CF -- "proxy → port 8765" --> MapUI
+    CF -- "proxy → /assistant/\n(nginx → port 3334)" --> ChatUI
     ClaudeAPI -- "localhost MCP calls" --> MCPTools
     bGeigie -- upload tracks --> REST_Map
     Fixed -- "real-time readings" --> RTPoller
