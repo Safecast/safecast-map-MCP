@@ -32,11 +32,12 @@ flowchart TB
         REST_Map["REST API\n/api/tracks /api/stats /api/json/..."]
         Fetcher["bGeigie Auto-Sync\n(-safecast-fetcher)"]
         RTPoller["Real-time Sensor Poller\n(-safecast-realtime)"]
+        SpectraUpload["Spectrum File Upload\n(SPE, N42, RCXML, RCTRK)"]
   end
  subgraph DB["🗄️ PostgreSQL + PostGIS"]
-        markers["markers table\n(historical bGeigie data)"]
+        markers["markers table\n(historical bGeigie data + spectrum locations)"]
         realtime["realtime_measurements\n(fixed sensors)"]
-        spectra["spectra table\n(gamma spectroscopy)"]
+        spectra["spectra table\n(gamma spectroscopy channel data)"]
   end
  subgraph WebChat["Web Chat (port 3334)"]
         ChatUI["Chat Interface\n(HTML + JavaScript)"]
@@ -72,6 +73,9 @@ flowchart TB
     ClaudeAPI -- "localhost MCP calls" --> MCPTools
     bGeigie -- upload tracks --> REST_Map
     Fixed -- "real-time readings" --> RTPoller
+    Spectrometers["📊 Gamma Spectrometers\n(bGeigieZen, RadiaCode, etc.)"] -- "upload spectrum files\n(SPE, N42, RCXML, RCTRK)" --> SpectraUpload
+    SpectraUpload -- "parse & store" --> spectra
+    SpectraUpload -- "store GPS location" --> markers
     GH_MCP -- rsync → IP direct --> Server
     GH_Map -- rsync → IP direct --> Server
 ```
@@ -127,6 +131,12 @@ flowchart TB
 - **REST API**: JSON endpoints for tracks, statistics, and map data
 - **bGeigie Auto-Sync**: Automated fetcher for approved bGeigie track imports
 - **Real-time Sensor Poller**: Polls fixed sensor stations for live readings
+- **Spectrum File Upload**: Processes gamma spectroscopy data files
+  - Supported formats: SPE (IAEA standard), N42 (ANSI), RCXML (RadiaCode XML), RCTRK (RadiaCode track)
+  - Parses channel counts, energy calibration, live time, device info
+  - Extracts GPS coordinates when available
+  - Stores spectrum data in `spectra` table, location in `markers` table
+  - Supports manual coordinate updates for files uploaded without GPS
 
 ### Web Chat Server (port 3334)
 - **Chat Interface**: HTML/JavaScript conversational interface
@@ -141,14 +151,33 @@ flowchart TB
   - Optimized system prompt (45% token reduction)
 
 ### PostgreSQL + PostGIS Database
-- **markers table**: Historical bGeigie mobile survey data
-- **realtime_measurements**: Fixed sensor station readings
-- **spectra table**: Gamma spectroscopy data
+- **markers table**:
+  - Historical bGeigie mobile survey data (GPS tracks with radiation measurements)
+  - Spectrum file GPS locations (links to spectra table via marker_id)
+  - Each marker has lat/lon coordinates and timestamp
+- **realtime_measurements**: Fixed sensor station readings (time-series data)
+- **spectra table**:
+  - Gamma spectroscopy channel data (energy spectrum histograms)
+  - Includes channel counts, energy calibration coefficients
+  - Device model, live time, measurement metadata
+  - References marker_id for GPS location
+  - Supports isotope identification and energy analysis
+- **uploads table**: Tracks all file uploads (tracks and spectra) with source attribution
 - Optimized with localhost connections for 60%+ query speedup
 
-### Radiation Sensors
+### Radiation Sensors & Devices
 - **bGeigie Nano/Zen**: Mobile survey devices that upload GPS-tagged radiation measurements
+  - Geiger counter-based dose rate logging
+  - Creates tracks of measurements over time
 - **Pointcast / Solarcast**: Fixed monitoring stations with real-time data feeds
+  - Continuous monitoring at static locations
+  - Data polled periodically by server
+- **Gamma Spectrometers**:
+  - bGeigieZen (with NaI or CsI detector)
+  - RadiaCode 101/102/103 (CsI detector)
+  - Other devices supporting SPE or N42 formats
+  - Provides full energy spectrum for isotope identification
+  - Files uploaded manually via web interface
 
 ### CI/CD Pipeline
 - **GitHub Actions**: Automated cross-compilation and deployment
@@ -158,12 +187,17 @@ flowchart TB
 ## Data Flow
 
 1. **Sensor Data Collection**
-   - bGeigie devices upload tracks via REST API
-   - Fixed stations send real-time readings to poller
+   - **bGeigie devices**: Upload tracks (LOG/CSV files) via REST API
+   - **Fixed stations**: Polled periodically for real-time readings
+   - **Gamma spectrometers**: Users upload spectrum files (SPE/N42/RCXML/RCTRK) via web UI
 
 2. **Data Storage**
-   - Auto-sync fetcher imports approved tracks to markers table
-   - Real-time poller stores sensor readings in realtime_measurements table
+   - **Tracks**: Auto-sync fetcher imports approved tracks to markers table
+   - **Real-time sensors**: Poller stores readings in realtime_measurements table
+   - **Spectra**: Upload handler parses files and stores in:
+     - `spectra` table: Channel data, calibration, metadata
+     - `markers` table: GPS coordinates (when available)
+     - `uploads` table: File tracking and attribution
 
 3. **Data Access**
    - **MCP Clients** (Claude.ai, Claude Code, etc.): Query via MCP protocol (SSE or streamable HTTP)
@@ -206,6 +240,40 @@ flowchart TB
 - **DuckDB analytics**: Comprehensive tool usage logging and analytics system
 - **Migration to simplemap.safecast.org**: Moved from vps-01.safecast.jp for 60%+ query speedup via localhost DB connections
 
+## Spectrum File Processing
+
+### Upload Flow
+1. User uploads spectrum file via web interface (simplemap.safecast.org)
+2. Upload handler receives file (SPE, N42, RCXML, or RCTRK format)
+3. Format-specific parser extracts:
+   - Channel counts (energy histogram)
+   - Energy calibration coefficients (A + B×channel + C×channel²)
+   - Live time and real time
+   - Device model/detector type
+   - GPS coordinates (if embedded in file)
+   - Measurement timestamp
+4. Data stored in database:
+   - `spectra` table: Channel data, calibration, metadata
+   - `markers` table: GPS location (creates new marker)
+   - `uploads` table: Upload tracking record
+
+### Supported Formats
+- **SPE** (IAEA standard): Text-based format with channel data and metadata
+- **N42** (ANSI N42.42): XML-based standard for radiation detectors
+- **RCXML** (RadiaCode XML): RadiaCode-specific XML format
+- **RCTRK** (RadiaCode Track): RadiaCode GPS-tagged spectrum track
+
+### Data Structure
+- **Spectrum**: Full energy histogram (typically 256-4096 channels)
+- **Calibration**: Quadratic equation mapping channels to energy (keV)
+- **Marker Reference**: Links spectrum to GPS coordinates via marker_id
+- **Device Info**: Detector model extracted from file metadata
+
+### Querying Spectra
+- `list_spectra`: Browse/search spectrum metadata (without channel data)
+- `get_spectrum`: Retrieve full channel data for specific spectrum
+- Results include clickable map links to visualization
+
 ## Performance Optimizations
 
 1. **Localhost Database Connections**: All PostgreSQL queries use localhost:5432 instead of remote connections
@@ -220,3 +288,8 @@ flowchart TB
    - HTTPS termination offloaded from application server
    - Static asset caching
    - Geographic distribution for global users
+
+4. **Async Upload Processing**:
+   - Files read into memory immediately
+   - Processing happens asynchronously
+   - Quick response to user (no waiting for parsing)
