@@ -295,6 +295,11 @@ func searchTracksByLocationDB(ctx context.Context, country string, minLat, maxLa
 			"created_at":  r["created_at"],
 		}
 
+		// Add map URL for track view
+		if trackID, ok := r["track_id"].(string); ok && trackID != "" {
+			track["map_url"] = "https://simplemap.safecast.org/?track=" + trackID
+		}
+
 		// Add location info if available
 		if centroidLat, ok := r["centroid_lat"]; ok && centroidLat != nil {
 			if centroidLon, ok := r["centroid_lon"]; ok && centroidLon != nil {

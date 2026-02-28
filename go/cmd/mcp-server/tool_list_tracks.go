@@ -173,6 +173,11 @@ func listTracksDB(ctx context.Context, year, month int, detector, username strin
 			"created_at":     r["created_at"],
 		}
 
+		// Add map URL for track view
+		if trackID, ok := r["track_id"].(string); ok && trackID != "" {
+			track["map_url"] = "https://simplemap.safecast.org/?track=" + trackID
+		}
+
 		// Prefer internal username over external username
 		if internalUsername, ok := r["internal_username"]; ok && internalUsername != nil && internalUsername != "" {
 			track["username"] = internalUsername

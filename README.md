@@ -103,7 +103,7 @@ Browse bGeigie Import tracks (bulk radiation measurement drives/journeys). Each 
 {"name": "list_tracks", "arguments": {"year": 2024, "month": 1}}
 ```
 
-Each result includes: `track_id`, `name`, `description`, `city`, `measurement_count`, `created_at`, and status info.
+Each result includes: `track_id`, `filename`, `detector`, `file_size`, `recording_date`, `created_at`, `username` (uploader), `map_url` (direct link to track view), and optional `uploader` object with username and email.
 
 ---
 
@@ -137,7 +137,7 @@ Find bGeigie measurement tracks by country name or geographic bounding box. This
 {"name": "search_tracks_by_location", "arguments": {"min_lat": 35.5, "max_lat": 35.8, "min_lon": 139.5, "max_lon": 139.9, "limit": 100}}
 ```
 
-Each result includes: `track_id`, `filename`, `detector`, `file_size`, `recording_date`, `created_at`, `username` (uploader), `centroid` (approximate center of track), and optional `uploader` object with username and email.
+Each result includes: `track_id`, `filename`, `detector`, `file_size`, `recording_date`, `created_at`, `username` (uploader), `centroid` (approximate center of track), `map_url` (direct link to track view), and optional `uploader` object with username and email.
 
 > **Note**: Requires database connection. Country name lookup supports 80+ countries including South Africa, USA, Japan, Germany, France, UK, Australia, and many more.
 

@@ -124,6 +124,7 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 
 	result := map[string]any{
 		"track_id":        trackID,
+		"map_url":         "https://simplemap.safecast.org/?track=" + trackID,
 		"count":           len(measurements),
 		"total_available": total,
 		"source":          "database",
@@ -171,6 +172,7 @@ func getTrackAPI(ctx context.Context, trackIDStr string, fromID, toID, limit int
 			"track_id":     resp["trackID"],
 			"marker_count": resp["markerCount"],
 			"track_index":  resp["trackIndex"],
+			"map_url":      "https://simplemap.safecast.org/?track=" + resp["trackID"].(string),
 		},
 		"count":           len(normalized),
 		"total_available": totalAvailable,
