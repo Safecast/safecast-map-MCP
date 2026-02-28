@@ -3,7 +3,7 @@
   "checkpoint_id": "0481df55f17d",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 4,
+  "checkpoints_count": 2,
   "files_touched": [
     "docs/ARCHITECTURE.md",
     "docs/architecture-diagram.mmd",
@@ -26,10 +26,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 310,
-    "cache_creation_tokens": 240233,
-    "cache_read_tokens": 1956044,
-    "output_tokens": 89,
-    "api_call_count": 36
+    "input_tokens": 178,
+    "cache_creation_tokens": 211245,
+    "cache_read_tokens": 1889383,
+    "output_tokens": 47,
+    "api_call_count": 21
   }
 }

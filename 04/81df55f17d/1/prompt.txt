@@ -84,3 +84,11 @@ can you also add the assistant.safecast.org information?
 ---
 
 yes, domain for the webchat.
+
+---
+
+can you add more information on the spectral files how they are added to the DB?
+
+---
+
+I think the assitant if not going tough CloudFront. can you check?
