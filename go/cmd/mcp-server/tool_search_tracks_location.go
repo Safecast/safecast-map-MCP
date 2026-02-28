@@ -297,7 +297,7 @@ func searchTracksByLocationDB(ctx context.Context, country string, minLat, maxLa
 
 		// Add map URL for track view
 		if trackID, ok := r["track_id"].(string); ok && trackID != "" {
-			track["map_url"] = "https://simplemap.safecast.org/?track=" + trackID
+			track["map_url"] = "https://simplemap.safecast.org/trackid/" + trackID
 		}
 
 		// Add location info if available
