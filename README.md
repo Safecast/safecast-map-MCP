@@ -777,7 +777,7 @@ Pushing to `main` automatically builds and deploys to **simplemap.safecast.org**
 2. Uploads it to the map server via rsync
 3. Creates `.env` file with localhost database connection
 4. Restarts the MCP server via systemd
-5. Configures Apache proxy for `/mcp-http`, `/docs/`, and `/api/` endpoints
+5. Configures nginx proxy for `/mcp-http`, `/docs/`, and `/api/` endpoints
 6. Runs a health check against the `/mcp-http` endpoint
 
 ### Setting up secrets
