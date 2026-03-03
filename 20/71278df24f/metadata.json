@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "2071278df24f",
+  "strategy": "manual-commit",
+  "branch": "mistral-api-web-chat",
+  "checkpoints_count": 23,
+  "files_touched": [
+    "go/cmd/web-chat/main.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/20/71278df24f/0/metadata.json",
+      "transcript": "/20/71278df24f/0/full.jsonl",
+      "context": "/20/71278df24f/0/context.md",
+      "content_hash": "/20/71278df24f/0/content_hash.txt",
+      "prompt": "/20/71278df24f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 304,
+    "cache_creation_tokens": 467982,
+    "cache_read_tokens": 21899871,
+    "output_tokens": 90132,
+    "api_call_count": 237
+  }
+}

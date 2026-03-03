@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "2071278df24f",
+  "session_id": "bc583e35-b9e8-45bd-bdd1-b7275c4d77d2",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T13:38:55.19871319Z",
+  "branch": "mistral-api-web-chat",
+  "checkpoints_count": 23,
+  "files_touched": [
+    "go/cmd/web-chat/main.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "6d6db7294b22",
+  "token_usage": {
+    "input_tokens": 304,
+    "cache_creation_tokens": 467982,
+    "cache_read_tokens": 21899871,
+    "output_tokens": 90132,
+    "api_call_count": 237
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T13:38:54.397011239Z",
+    "agent_lines": 87,
+    "human_added": 8,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 99,
+    "agent_percentage": 87.87878787878788
+  }
+}
