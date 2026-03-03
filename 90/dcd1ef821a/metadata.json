@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "90dcd1ef821a",
+  "strategy": "manual-commit",
+  "branch": "ollama-web-chat",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "go/cmd/web-chat/main.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/90/dcd1ef821a/0/metadata.json",
+      "transcript": "/90/dcd1ef821a/0/full.jsonl",
+      "context": "/90/dcd1ef821a/0/context.md",
+      "content_hash": "/90/dcd1ef821a/0/content_hash.txt",
+      "prompt": "/90/dcd1ef821a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 72,
+    "cache_creation_tokens": 40016,
+    "cache_read_tokens": 3741508,
+    "output_tokens": 20125,
+    "api_call_count": 60
+  }
+}

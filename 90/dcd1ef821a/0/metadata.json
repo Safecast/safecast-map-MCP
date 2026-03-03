@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "90dcd1ef821a",
+  "session_id": "bc583e35-b9e8-45bd-bdd1-b7275c4d77d2",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T02:55:24.339231518Z",
+  "branch": "ollama-web-chat",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "go/cmd/web-chat/main.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "8d1a02f1c993",
+  "token_usage": {
+    "input_tokens": 72,
+    "cache_creation_tokens": 40016,
+    "cache_read_tokens": 3741508,
+    "output_tokens": 20125,
+    "api_call_count": 60
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T02:55:24.098718056Z",
+    "agent_lines": 100,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 100,
+    "agent_percentage": 100
+  }
+}

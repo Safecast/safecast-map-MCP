@@ -1,0 +1,42 @@
+I have locally mistral setup with Ollama. We can use that. Can you install            
+  mistral-rs for me for testing?  And it tesing is working as expected , we can move the setup to the VPS.
+
+---
+
+[Request interrupted by user]
+
+---
+
+The goal is to run Ollama with Mistral in the VPS to lreplace Claude Haki setup.
+
+---
+
+[Request interrupted by user]
+
+---
+
+Do not update the VPS yet. But the two other things on your todo list are fine.
+
+---
+
+try llama3.1:8b
+
+---
+
+We should have access to my local setup too. Can you check?
+
+---
+
+[Request interrupted by user]
+
+---
+
+I mean the Safecast data in potsgres
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+before I forget. Can you first make a Ollama brach and commit and push for the setup?
