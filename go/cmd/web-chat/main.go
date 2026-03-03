@@ -54,43 +54,50 @@ Always state radius used.
 
 Be concise. Ask for clarification if location unclear.`
 
-// ── Anthropic API types ────────────────────────────────────────────────────
+// ── Ollama / OpenAI-compatible API types ────────────────────────────────────
 
-type anthropicTool struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	InputSchema json.RawMessage `json:"input_schema"`
+type ollamaTool struct {
+	Type     string `json:"type"` // "function"
+	Function struct {
+		Name        string          `json:"name"`
+		Description string          `json:"description"`
+		Parameters  json.RawMessage `json:"parameters"`
+	} `json:"function"`
 }
 
-// contentBlock covers all content block variants we care about.
-type contentBlock struct {
-	Type      string          `json:"type"`
-	Text      string          `json:"text,omitempty"`
-	ID        string          `json:"id,omitempty"`
-	Name      string          `json:"name,omitempty"`
-	Input     json.RawMessage `json:"input,omitempty"`
-	ToolUseID string          `json:"tool_use_id,omitempty"`
-	Content   string          `json:"content,omitempty"`
+type toolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"` // JSON-encoded string
 }
 
-type anthropicMessage struct {
-	Role    string      `json:"role"`
-	Content interface{} `json:"content"` // string or []contentBlock
+type toolCall struct {
+	ID       string           `json:"id"`
+	Type     string           `json:"type"` // "function"
+	Function toolCallFunction `json:"function"`
 }
 
-type anthropicRequest struct {
-	Model     string             `json:"model"`
-	MaxTokens int                `json:"max_tokens"`
-	System    string             `json:"system"`
-	Messages  []anthropicMessage `json:"messages"`
-	Tools     []anthropicTool    `json:"tools,omitempty"`
+type ollamaMessage struct {
+	Role       string     `json:"role"`
+	Content    string     `json:"content,omitempty"`
+	ToolCalls  []toolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
 }
 
-type anthropicResponse struct {
-	Content    []contentBlock `json:"content"`
-	StopReason string         `json:"stop_reason"`
-	Error      *struct {
-		Type    string `json:"type"`
+type ollamaRequest struct {
+	Model    string          `json:"model"`
+	Messages []ollamaMessage `json:"messages"`
+	Tools    []ollamaTool    `json:"tools,omitempty"`
+	Stream   bool            `json:"stream"`
+}
+
+type ollamaChoice struct {
+	Message      ollamaMessage `json:"message"`
+	FinishReason string        `json:"finish_reason"`
+}
+
+type ollamaResponse struct {
+	Choices []ollamaChoice `json:"choices"`
+	Error   *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 }
@@ -112,7 +119,6 @@ func writeChunk(w http.ResponseWriter, c chunk) {
 	}
 }
 
-// writeChunkBuffered either buffers the chunk or writes immediately
 func writeChunkBuffered(w http.ResponseWriter, c chunk, buffer *[]chunk, useBuffer bool) {
 	if useBuffer {
 		*buffer = append(*buffer, c)
@@ -121,39 +127,35 @@ func writeChunkBuffered(w http.ResponseWriter, c chunk, buffer *[]chunk, useBuff
 	}
 }
 
-// flushBuffer writes all buffered chunks at once
 func flushBuffer(w http.ResponseWriter, buffer []chunk) {
 	for _, c := range buffer {
 		writeChunk(w, c)
 	}
 }
 
-// ── Anthropic call ─────────────────────────────────────────────────────────
+// ── Ollama call ─────────────────────────────────────────────────────────────
 
-func callAnthropic(ctx context.Context, apiKey, model string, messages []anthropicMessage, tools []anthropicTool) (*anthropicResponse, error) {
-	reqBody := anthropicRequest{
-		Model:     model,
-		MaxTokens: 4096,
-		System:    systemPrompt,
-		Messages:  messages,
-		Tools:     tools,
+func callOllama(ctx context.Context, ollamaURL, model string, messages []ollamaMessage, tools []ollamaTool) (*ollamaResponse, error) {
+	reqBody := ollamaRequest{
+		Model:    model,
+		Messages: messages,
+		Tools:    tools,
+		Stream:   false,
 	}
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ollamaURL+"/v1/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ollama request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -162,34 +164,38 @@ func callAnthropic(ctx context.Context, apiKey, model string, messages []anthrop
 		return nil, err
 	}
 
-	var ar anthropicResponse
-	if err := json.Unmarshal(raw, &ar); err != nil {
-		return nil, fmt.Errorf("parse response: %w", err)
+	var or ollamaResponse
+	if err := json.Unmarshal(raw, &or); err != nil {
+		return nil, fmt.Errorf("parse response: %w (body: %.200s)", err, raw)
 	}
-	if ar.Error != nil {
-		return nil, fmt.Errorf("anthropic %s: %s", ar.Error.Type, ar.Error.Message)
+	if or.Error != nil {
+		return nil, fmt.Errorf("ollama error: %s", or.Error.Message)
 	}
-	return &ar, nil
+	if len(or.Choices) == 0 {
+		return nil, fmt.Errorf("ollama returned no choices (body: %.200s)", raw)
+	}
+	return &or, nil
 }
 
 // ── MCP tool conversion ────────────────────────────────────────────────────
 
-func mcpToolsToAnthropic(tools []mcp.Tool) []anthropicTool {
-	var out []anthropicTool
+func mcpToolsToOllama(tools []mcp.Tool) []ollamaTool {
+	var out []ollamaTool
 	for _, t := range tools {
 		schema, _ := json.Marshal(t.InputSchema)
-		out = append(out, anthropicTool{
-			Name:        t.Name,
-			Description: t.Description,
-			InputSchema: json.RawMessage(schema),
-		})
+		var ot ollamaTool
+		ot.Type = "function"
+		ot.Function.Name = t.Name
+		ot.Function.Description = t.Description
+		ot.Function.Parameters = json.RawMessage(schema)
+		out = append(out, ot)
 	}
 	return out
 }
 
 // ── Chat handler ───────────────────────────────────────────────────────────
 
-func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
+func handleChat(mcpURL, ollamaURL, model string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// CORS preflight
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -201,35 +207,30 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		}
 
 		// Detect if request comes through CloudFront
-		// CloudFront adds these headers: CloudFront-Viewer-Country, CloudFront-Forwarded-Proto, etc.
 		isCloudfFront := r.Header.Get("CloudFront-Viewer-Country") != "" ||
 			r.Header.Get("CloudFront-Forwarded-Proto") != "" ||
 			r.Header.Get("X-Amz-Cf-Id") != ""
 
-		// Debug logging
 		log.Printf("Chat request: CloudFront=%v, Headers: CF-Country=%q, CF-Proto=%q, X-Amz-Cf-Id=%q",
 			isCloudfFront,
 			r.Header.Get("CloudFront-Viewer-Country"),
 			r.Header.Get("CloudFront-Forwarded-Proto"),
 			r.Header.Get("X-Amz-Cf-Id"))
 
-		// Chunked HTTP streaming — NDJSON, one JSON object per line, flushed immediately.
-		// CloudFront buffers responses, so we collect chunks and send all at once.
 		w.Header().Set("Content-Type", "application/x-ndjson")
 		if !isCloudfFront {
 			w.Header().Set("Transfer-Encoding", "chunked")
-			w.Header().Set("X-Accel-Buffering", "no") // nginx: don't buffer
+			w.Header().Set("X-Accel-Buffering", "no")
 		}
 		w.Header().Set("Cache-Control", "no-cache, no-store")
 
-		// Buffer for CloudFront requests
 		var buffer []chunk
 
 		ctx := r.Context()
 
 		var chatReq struct {
-			Message string              `json:"message"`
-			History []anthropicMessage `json:"history,omitempty"`
+			Message string          `json:"message"`
+			History []ollamaMessage `json:"history,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -272,18 +273,19 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			}
 			return
 		}
-		tools := mcpToolsToAnthropic(toolsResult.Tools)
+		tools := mcpToolsToOllama(toolsResult.Tools)
+
+		// ── Build message list ─────────────────────────────────────────────
+		// System message first, then history, then new user message.
+		messages := []ollamaMessage{
+			{Role: "system", Content: systemPrompt},
+		}
+		messages = append(messages, chatReq.History...)
+		messages = append(messages, ollamaMessage{Role: "user", Content: chatReq.Message})
 
 		// ── Agentic loop ───────────────────────────────────────────────────
-		// Start with conversation history (if provided) and append new user message
-		messages := chatReq.History
-		if messages == nil {
-			messages = []anthropicMessage{}
-		}
-		messages = append(messages, anthropicMessage{Role: "user", Content: chatReq.Message})
-
 		for {
-			resp, err := callAnthropic(ctx, apiKey, model, messages, tools)
+			resp, err := callOllama(ctx, ollamaURL, model, messages, tools)
 			if err != nil {
 				writeChunkBuffered(w, chunk{Type: "error", Error: err.Error()}, &buffer, isCloudfFront)
 				if isCloudfFront {
@@ -292,34 +294,29 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				return
 			}
 
-			messages = append(messages, anthropicMessage{
-				Role:    "assistant",
-				Content: resp.Content,
-			})
+			choice := resp.Choices[0]
+			msg := choice.Message
 
-			var toolUses []contentBlock
-			for _, block := range resp.Content {
-				switch block.Type {
-				case "text":
-					// Stream each text block as it arrives (or buffer if CloudFront)
-					writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudfFront)
-				case "tool_use":
-					toolUses = append(toolUses, block)
-				}
+			// Append assistant message to history
+			messages = append(messages, msg)
+
+			// Stream any text content
+			if msg.Content != "" {
+				writeChunkBuffered(w, chunk{Type: "text", Text: msg.Content}, &buffer, isCloudfFront)
 			}
 
-			if resp.StopReason == "end_turn" || len(toolUses) == 0 {
+			// Stop if no tool calls
+			if choice.FinishReason == "stop" || len(msg.ToolCalls) == 0 {
 				break
 			}
 
 			// ── Execute tool calls via MCP ─────────────────────────────────
-			var toolResults []contentBlock
-			for _, tu := range toolUses {
+			for _, tc := range msg.ToolCalls {
 				var args map[string]any
-				_ = json.Unmarshal(tu.Input, &args)
+				_ = json.Unmarshal([]byte(tc.Function.Arguments), &args)
 
 				callReq := mcp.CallToolRequest{}
-				callReq.Params.Name = tu.Name
+				callReq.Params.Name = tc.Function.Name
 				callReq.Params.Arguments = args
 
 				var resultText string
@@ -328,29 +325,23 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 					resultText = fmt.Sprintf("tool error: %v", err)
 				} else {
 					for _, c := range toolResult.Content {
-						if tc, ok := c.(mcp.TextContent); ok {
-							resultText += tc.Text
+						if tc2, ok := c.(mcp.TextContent); ok {
+							resultText += tc2.Text
 						}
 					}
 				}
 
-				toolResults = append(toolResults, contentBlock{
-					Type:      "tool_result",
-					ToolUseID: tu.ID,
-					Content:   resultText,
+				messages = append(messages, ollamaMessage{
+					Role:       "tool",
+					ToolCallID: tc.ID,
+					Content:    resultText,
 				})
 			}
-
-			messages = append(messages, anthropicMessage{
-				Role:    "user",
-				Content: toolResults,
-			})
 		}
 
 		// Send final "done" chunk
 		writeChunkBuffered(w, chunk{Type: "done"}, &buffer, isCloudfFront)
 
-		// For CloudFront requests, flush all buffered chunks at once
 		if isCloudfFront {
 			flushBuffer(w, buffer)
 		}
@@ -360,13 +351,13 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 // ── Main ───────────────────────────────────────────────────────────────────
 
 func main() {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		log.Fatal("ANTHROPIC_API_KEY is required")
+	ollamaURL := os.Getenv("OLLAMA_URL")
+	if ollamaURL == "" {
+		ollamaURL = "http://localhost:11434"
 	}
-	model := os.Getenv("CLAUDE_MODEL")
+	model := os.Getenv("OLLAMA_MODEL")
 	if model == "" {
-		model = "claude-sonnet-4-5"
+		model = "mistral"
 	}
 	mcpURL := os.Getenv("MCP_URL")
 	if mcpURL == "" {
@@ -386,12 +377,12 @@ func main() {
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		w.Write(logoPNG)
 	})
-	http.HandleFunc("/chat", handleChat(mcpURL, apiKey, model))
+	http.HandleFunc("/chat", handleChat(mcpURL, ollamaURL, model))
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
 	})
 
-	log.Printf("Safecast web-chat on :%s  MCP→%s  model=%s", port, mcpURL, model)
+	log.Printf("Safecast web-chat on :%s  MCP→%s  ollama=%s  model=%s", port, mcpURL, ollamaURL, model)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
