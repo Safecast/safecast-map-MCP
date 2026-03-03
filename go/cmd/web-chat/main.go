@@ -50,6 +50,7 @@ Always state radius used.
   * NEVER plain device names or "Visit: https://..." text
 - Sensor/track data: ALWAYS use markdown tables (not lists)
 - Table columns: Device ID, Type, Location, Reading, Timestamp
+- Timestamp: ALWAYS display in UTC — convert from any timezone, format as "2026-03-03 22:14 UTC"
 - Concise coords: "37.48°N, 140.48°E"
 
 Be concise. Ask for clarification if location unclear.`
