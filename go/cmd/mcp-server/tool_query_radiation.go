@@ -156,7 +156,15 @@ func queryRadiationDB(ctx context.Context, lat, lon, radiusM float64, limit int)
 		},
 		"measurements": measurements,
 		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements. (3) **FORMATTING — REQUIRED**: Always present results in a markdown table. Every location (lat/lon pair) MUST be a clickable map link: [lat°N, lon°E](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15). Never show plain coordinates without a link.",
-		"_next_step": "REQUIRED: This result contains ONLY historical mobile survey data. You MUST now call sensor_current with a bounding box around the same location to check for real-time fixed sensors (bGeigieZen, Pointcast, Notehub, nGeigie, etc.). Do not report 'no real-time data' until sensor_current has been called and returned empty results.",
+		"_next_step": map[string]any{
+			"instruction": "REQUIRED: This result contains ONLY historical mobile survey data. You MUST immediately call sensor_current using the bounding box below to check for real-time fixed sensors. Do NOT report 'no real-time data' until sensor_current has been called.",
+			"call_sensor_current_with": map[string]any{
+				"min_lat": lat - 0.5,
+				"max_lat": lat + 0.5,
+				"min_lon": lon - 0.5,
+				"max_lon": lon + 0.5,
+			},
+		},
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
@@ -187,7 +195,15 @@ func queryRadiationAPI(ctx context.Context, lat, lon, radiusM float64, limit int
 		},
 		"measurements": normalized,
 		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements. (3) **FORMATTING — REQUIRED**: Always present results in a markdown table. Every location (lat/lon pair) MUST be a clickable map link: [lat°N, lon°E](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15). Never show plain coordinates without a link.",
-		"_next_step": "REQUIRED: This result contains ONLY historical mobile survey data. You MUST now call sensor_current with a bounding box around the same location to check for real-time fixed sensors (bGeigieZen, Pointcast, Notehub, nGeigie, etc.). Do not report 'no real-time data' until sensor_current has been called and returned empty results.",
+		"_next_step": map[string]any{
+			"instruction": "REQUIRED: This result contains ONLY historical mobile survey data. You MUST immediately call sensor_current using the bounding box below to check for real-time fixed sensors. Do NOT report 'no real-time data' until sensor_current has been called.",
+			"call_sensor_current_with": map[string]any{
+				"min_lat": lat - 0.5,
+				"max_lat": lat + 0.5,
+				"min_lon": lon - 0.5,
+				"max_lon": lon + 0.5,
+			},
+		},
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 
