@@ -1,0 +1,45 @@
+can we guide Mistral better?
+
+---
+
+maybe we should do the same the same for real time radnote and pointcast ,devices that are call note:dev I think?
+
+---
+
+ngeigie too!
+
+---
+
+yes and commit and push the code
+
+---
+
+Mnn not sure. Itest gaain with Mistral Thnk option:
+
+---
+
+If I use the assitant.safecast.org it works well. But if I use Mistral it  the results are not that great.
+
+---
+
+the chat with MCP server.
+
+---
+
+Yes, please do that and find out about other models that they can give good replies.
+
+---
+
+A litle bit better, but still not great.. Seems Mistral does not look at real time data at all?
+
+---
+
+[Request interrupted by user]
+
+---
+
+scren
+
+---
+
+Seems the mistral thinks that Mitsue, Nara ken is in Mie ken, not Nara. Maybe we should make the search area of villages and towns much biggre maybe 50km radius?
