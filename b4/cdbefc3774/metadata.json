@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "b4cdbefc3774",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "go/cmd/mcp-server/tool_query_radiation.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b4/cdbefc3774/0/metadata.json",
+      "transcript": "/b4/cdbefc3774/0/full.jsonl",
+      "context": "/b4/cdbefc3774/0/context.md",
+      "content_hash": "/b4/cdbefc3774/0/content_hash.txt",
+      "prompt": "/b4/cdbefc3774/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 10880,
+    "cache_read_tokens": 1152982,
+    "output_tokens": 3582,
+    "api_call_count": 10
+  }
+}
