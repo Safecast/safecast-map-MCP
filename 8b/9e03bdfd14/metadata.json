@@ -5,6 +5,8 @@
   "branch": "main",
   "checkpoints_count": 0,
   "files_touched": [
+    "go/cmd/mcp-server/tool_query_radiation.go",
+    "go/cmd/mcp-server/tool_sensor_current.go",
     "go/cmd/web-chat/main.go"
   ],
   "sessions": [
@@ -14,6 +16,13 @@
       "context": "/8b/9e03bdfd14/0/context.md",
       "content_hash": "/8b/9e03bdfd14/0/content_hash.txt",
       "prompt": "/8b/9e03bdfd14/0/prompt.txt"
+    },
+    {
+      "metadata": "/8b/9e03bdfd14/1/metadata.json",
+      "transcript": "/8b/9e03bdfd14/1/full.jsonl",
+      "context": "/8b/9e03bdfd14/1/context.md",
+      "content_hash": "/8b/9e03bdfd14/1/content_hash.txt",
+      "prompt": "/8b/9e03bdfd14/1/prompt.txt"
     }
   ],
   "token_usage": {
