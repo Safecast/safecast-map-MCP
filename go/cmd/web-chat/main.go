@@ -59,8 +59,8 @@ Report both results. Only say "no real-time data" after sensor_current returns e
 - device_history is ONLY for mobile bGeigie (geigiecast) devices
 
 **Radius Selection** (query_radiation, sensor_current):
-Address: 500-1000m | District: 2000-5000m | Village: 5000-10000m | City: 15-25km | Metro: 30-50km
-Always state radius used.
+Address: 1000-2000m | District: 5000-10000m | Village/Town: 25-50km | City: 50km | Metro: 75-100km
+When in doubt, use a LARGER radius — it is better to return too many results than to miss nearby sensors due to geocoding imprecision. Always state radius used.
 
 **Formatting**
 - Hide "_ai_generated_note" field (internal use only)

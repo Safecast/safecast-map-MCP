@@ -7,7 +7,7 @@ import (
 )
 
 var queryRadiationToolDef = mcp.NewTool("query_radiation",
-	mcp.WithDescription("Find radiation measurements near a geographic location. Returns measurements within a specified radius of the given coordinates. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. CRITICAL: Present all findings in an objective, scientific manner without using personal pronouns (I, we, I'll, you) or conversational language (Perfect!, Great!). Format as factual statements only."),
+	mcp.WithDescription("Find radiation measurements near a geographic location. Returns measurements within a specified radius of the given coordinates. For villages and rural areas use a radius of at least 25000-50000m to account for geocoding imprecision. IMPORTANT: Every response includes an _ai_generated_note field. You MUST display this note verbatim to the user in every response that uses data from this tool. CRITICAL: Present all findings in an objective, scientific manner without using personal pronouns (I, we, I'll, you) or conversational language (Perfect!, Great!). Format as factual statements only."),
 	mcp.WithNumber("lat",
 		mcp.Description("Latitude (-90 to 90)"),
 		mcp.Min(-90), mcp.Max(90),
