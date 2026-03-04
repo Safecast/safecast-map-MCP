@@ -105,6 +105,9 @@ func main() {
 	mux.Handle("/mcp-http", httpServer)
 	mux.Handle("/mcp/", sseServer) // SSE server handles /mcp/sse and /mcp/message
 
+	rest := &RESTHandler{}
+	rest.Register(mux)
+
 	port := os.Getenv("MCP_PORT")
 	if port == "" {
 		port = "3333"
