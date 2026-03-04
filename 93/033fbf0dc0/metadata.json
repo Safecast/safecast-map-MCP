@@ -5,7 +5,9 @@
   "branch": "main",
   "checkpoints_count": 1,
   "files_touched": [
-    "go/mcp-server"
+    "go/cmd/mcp-server/main.go",
+    "go/mcp-server",
+    "safecast-web-chat"
   ],
   "sessions": [
     {
@@ -14,6 +16,13 @@
       "context": "/93/033fbf0dc0/0/context.md",
       "content_hash": "/93/033fbf0dc0/0/content_hash.txt",
       "prompt": "/93/033fbf0dc0/0/prompt.txt"
+    },
+    {
+      "metadata": "/93/033fbf0dc0/1/metadata.json",
+      "transcript": "/93/033fbf0dc0/1/full.jsonl",
+      "context": "/93/033fbf0dc0/1/context.md",
+      "content_hash": "/93/033fbf0dc0/1/content_hash.txt",
+      "prompt": "/93/033fbf0dc0/1/prompt.txt"
     }
   ],
   "token_usage": {
